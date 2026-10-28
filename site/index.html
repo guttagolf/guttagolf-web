@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gutta Golf</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Indoor golf in North York. Eight private bays with SG Golf simulators on Lesmill Rd. From $35/hr per bay, up to 4 players. Book online.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="home">
+<div id="gg-header"></div>
+
+<main>
+  <!-- 1. Hero: headline, booking button, current rates (like Tracer's hero + rate box) -->
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <p class="eyebrow">Indoor golf · North York</p>
+        <h1>Eight private bays on <em>Lesmill Road</em></h1>
+        <p class="lead">SG Golf simulators with auto tee-up and shot data on every swing. Staff on site whenever we're open. Book online in under a minute, no app to download.</p>
+        <div class="ctas">
+          <a class="btn" href="book.html">Book a bay</a>
+          <a class="btn ghost" href="rates.html">See all rates</a>
+        </div>
+        <div class="ratebox">
+          <p class="eyebrow">Current rates · <span data-gg="seasonNow">Winter</span></p>
+          <ul data-gg-rates="now">
+            <li><span>Weekdays, 9 AM – 12 AM</span><b>$35<small>/hr</small></b></li>
+            <li><span>Weekends &amp; holidays</span><b>$38<small>/hr</small></b></li>
+            <li><span>Late night, 12 – 6 AM</span><b>$40<small>/hr</small></b></li>
+          </ul>
+          <p>Up to 4 players share one bay. Prices before 13% HST. Save more with <a href="rates.html#packs">10-hour coupon packs</a>.</p>
+        </div>
+      </div>
+      <div class="board" aria-label="Open bays today">
+        <div class="board-top">
+          <h3>Today's bays</h3>
+          <span class="eyebrow" id="boardDate"></span>
+        </div>
+        <ol id="board"></ol>
+        <a class="btn" href="book.html">Pick a time</a>
+        <p class="note">Sample availability for this test version.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Trust strip (Tracer uses an award badge here; we use our review score) -->
+  <section class="strip" aria-label="Rating">
+    <div class="wrap">
+      <div class="score-sm"><strong>5.0</strong><span class="stars" aria-hidden="true">★★★★★</span><span>129 reviews</span></div>
+      <blockquote>“The technology actually works. No glitches, just a seamless experience every time.” Sandy P.</blockquote>
+      <a href="#reviews">Read reviews</a>
+    </div>
+  </section>
+
+  <!-- 3. Feature grid -->
+  <section>
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">Why Gutta</p>
+        <h2>Built for practice that sticks</h2>
+        <p>A quiet bay, accurate numbers and someone to help when you need it.</p>
+      </div>
+      <div class="features">
+        <div><span class="big">8</span><h3>Private bays</h3><p>Practice without an audience. Every bay is yours for the whole booking.</p></div>
+        <div><span class="big">Auto</span><h3>Tee-up</h3><p>The ball tees itself after every shot, so you spend the hour swinging, not bending down.</p></div>
+        <div><span class="big">Data</span><h3>On every shot</h3><p>SG Golf simulators show ball speed, launch and carry right after impact.</p></div>
+        <div><span class="big">Staff</span><h3>On site</h3><p>A real person at the front desk to get you set up and answer questions.</p></div>
+        <div><span class="big">L/R</span><h3>Both hands</h3><p>Five bays work for left- and right-handed players.</p></div>
+        <div><span class="big" data-gg="rateDay">$35</span><h3>Per bay, per hour</h3><p>Bring up to three friends and split one rate. No membership needed.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. How it works -->
+  <section>
+    <div class="wrap">
+      <div class="head-row">
+        <div class="head">
+          <p class="eyebrow">How it works</p>
+          <h2>From your phone to the tee</h2>
+        </div>
+        <a class="btn ghost" href="how-it-works.html">Full guide</a>
+      </div>
+      <ol class="steps">
+        <li><h3>Pick a time</h3><p>Choose a day, how long you want to play and a start time. You see which bays are open right away.</p></li>
+        <li><h3>Pay online</h3><p>Pay by Visa, Mastercard or Amex, or use your coupon hours. Your confirmation arrives by email.</p></li>
+        <li><h3>Walk in and swing</h3><p>Check in at the desk. Your bay is ready, and the ball tees up by itself.</p></li>
+      </ol>
+      <ul class="rules">
+        <li>Bring your own clubs</li>
+        <li>Balls are provided</li>
+        <li>Free parking</li>
+        <li class="no">No alcohol, smoking or vaping</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 5. Ways to play (Tracer shows 3 bay types here) -->
+  <section>
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">Ways to play</p>
+        <h2>One bay, three ways to use it</h2>
+        <p>Pricing is for the bay, not per person. Up to 4 players per bay.</p>
+      </div>
+      <div class="offers">
+        <div class="card offer">
+          <h3>Practice</h3>
+          <p class="price"><span data-gg="rateDay">$35</span><small> /hr and up</small></p>
+          <ul><li>Driving range mode</li><li>Shot data after every swing</li><li>Auto tee-up</li></ul>
+          <a class="btn ghost" href="book.html">Book practice</a>
+        </div>
+        <div class="card offer">
+          <h3>Play a round</h3>
+          <p class="price"><span data-gg="rateDay">$35</span><small> /hr and up</small></p>
+          <ul><li>Virtual courses on SG Golf</li><li>Up to 4 players, same price</li><li>Good for groups and date nights</li></ul>
+          <a class="btn ghost" href="book.html">Book a round</a>
+        </div>
+        <div class="card offer">
+          <h3>Lessons</h3>
+          <p class="price">$100<small> /hr</small></p>
+          <ul><li>Private lessons with Jason and team</li><li>10-lesson package $800</li><li>Group classes by skill level</li></ul>
+          <a class="btn ghost" href="lessons.html">See lessons</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. The Gutta difference + reviews -->
+  <section id="reviews">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">Reviews</p>
+        <h2>What golfers say</h2>
+      </div>
+      <div class="points">
+        <div><h3>People, not just machines</h3><p>Staff on site every day to set up your bay and help with the simulator.</p></div>
+        <div><h3>Coaching that clicks</h3><p>Our reviews mention Jason's lessons again and again: patient, clear and fun.</p></div>
+        <div><h3>No app required</h3><p>Book from any browser. You get a confirmation email and that's it.</p></div>
+      </div>
+      <div class="score" style="margin-bottom: 24px"><strong>5.0</strong><span class="stars" aria-hidden="true">★★★★★</span><span>129 reviews on Teebly</span></div>
+      <div class="quotes">
+        <figure><blockquote>“The technology actually works. No glitches, just a seamless experience every time.”</blockquote><figcaption>Sandy P.</figcaption></figure>
+        <figure><blockquote>“8 private bays, 5 bays to accommodate both hands. Auto tee up system running on SG Golf software.”</blockquote><figcaption>Vannasinh P.</figcaption></figure>
+        <figure><blockquote>“Very clean and nice. Brand new golf simulator.”</blockquote><figcaption>Chris C.</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. Visit + contact (Tracer has Locations and Contact; we have one location) -->
+  <section id="visit">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">Visit &amp; contact</p>
+        <h2>Find us on Lesmill Road</h2>
+        <p>Have a question about bays, lessons or events? Call, email or message us on Instagram.</p>
+      </div>
+      <div class="visit">
+        <div>
+          <p class="eyebrow">Address</p>
+          <p class="big"><span data-gg="address1">244 Lesmill Rd</span><br><span data-gg="address2">North York, ON M3B 2M3</span></p>
+          <p class="muted">Free parking</p>
+          <a data-gg-href="maps" href="https://www.google.com/maps/search/?api=1&amp;query=244+Lesmill+Rd+North+York+ON" target="_blank" rel="noopener">Open in Google Maps</a>
+        </div>
+        <div>
+          <p class="eyebrow">Hours</p>
+          <p class="big" data-gg="hours">Every day, 9 AM – 12 AM</p>
+          <p class="muted">Late night 12 – 6 AM: book by 9 PM the same day</p>
+        </div>
+        <div>
+          <p class="eyebrow">Phone · Email · Instagram</p>
+          <p class="big mono" id="phone" data-gg="phone">437-655-4161</p>
+          <button class="copy" type="button" data-copy="437-655-4161" data-gg-copy="phone" data-target="phone">Copy number</button>
+          <p data-gg="email">info@guttagolf.ca</p>
+          <a href="https://www.instagram.com/guttagolf.ca/" target="_blank" rel="noopener">@guttagolf.ca</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-band">
+    <div class="wrap">
+      <div>
+        <h2>Ready to hit?</h2>
+        <p>Pick a bay and a time. It takes under a minute.</p>
+      </div>
+      <a class="btn" href="book.html">Book a bay</a>
+    </div>
+  </section>
+</main>
+
+<div id="gg-footer"></div>
+<script src="pricing.js"></script>
+<script src="site.js"></script>
+</body>
+</html>

@@ -1,0 +1,667 @@
+<title>Gutta Golf</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: booking first, right under the header; then a scoreboard-style hero with today's open bays and one column of sections — rates, lessons, reviews, FAQ, visit. */
+:root {
+  --bg: #F2F5F1;
+  --surface: #FFFFFF;
+  --ink: #14211B;
+  --muted: #56665D;
+  --line: #D6DED8;
+  --pine: #1F5A43;
+  --pine-ink: #FFFFFF;
+  --ball: #D9AE2E;
+  --soft: #E5EBE6;
+  --font-display: "Big Shoulders Display", "Arial Narrow", Impact, sans-serif;
+  --font-body: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  --radius: 10px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0D1512; --surface: #141F1A; --ink: #E6EEE9; --muted: #98AAA0; --line: #26342D;
+    --pine: #56A883; --pine-ink: #0A120F; --ball: #E6C25A; --soft: #1B2822; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0D1512; --surface: #141F1A; --ink: #E6EEE9; --muted: #98AAA0; --line: #26342D;
+  --pine: #56A883; --pine-ink: #0A120F; --ball: #E6C25A; --soft: #1B2822; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } * { transition: none !important; } }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.55; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+.wrap { max-width: 1080px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+a { color: var(--pine); }
+:focus-visible { outline: 3px solid var(--ball); outline-offset: 2px; }
+h1, h2, h3 { font-family: var(--font-display); text-transform: uppercase; letter-spacing: 0.01em; line-height: 1; text-wrap: balance; margin: 0; }
+h2 { font-size: clamp(2.2rem, 5vw, 3.2rem); }
+h3 { font-size: 1.5rem; }
+p { margin: 0; }
+.eyebrow { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 0 20px; border-radius: 999px; border: 1.5px solid var(--pine); background: var(--pine); color: var(--pine-ink); font: 600 1rem var(--font-body); text-decoration: none; cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--pine); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.testbar { background: var(--ball); color: #14211B; font-size: 0.85rem; font-weight: 600; text-align: center; padding-block: 6px; }
+header.site { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--surface); border-bottom: 1px solid var(--line); }
+header.site .wrap { display: flex; align-items: center; gap: 16px; min-height: 64px; }
+.logo { font-family: var(--font-display); font-weight: 800; font-size: 1.7rem; text-transform: uppercase; color: var(--ink); text-decoration: none; display: flex; align-items: center; gap: 8px; }
+.logo .dot { width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff 0 18%, var(--ball) 19% 100%); }
+nav.main { display: flex; gap: 20px; margin-left: auto; }
+nav.main a { color: var(--ink); text-decoration: none; font-weight: 500; }
+nav.main a:hover { color: var(--pine); }
+header.site .btn { min-height: 40px; }
+@media (max-width: 760px) { nav.main { display: none; } header.site .btn { margin-left: auto; } }
+
+section { padding-block: 64px; }
+section + section { border-top: 1px solid var(--line); }
+.head { display: grid; gap: 10px; margin-bottom: 28px; max-width: 640px; }
+.head p { color: var(--muted); }
+#book { padding-top: 36px; }
+
+/* Hero */
+.hero { padding-block: 48px 64px; }
+.hero .wrap { display: grid; grid-template-columns: 1.1fr 1fr; gap: 40px; align-items: center; }
+@media (max-width: 860px) { .hero .wrap { grid-template-columns: 1fr; } }
+.hero h1 { font-size: clamp(3rem, 8vw, 5.4rem); }
+.hero h1 em { font-style: normal; color: var(--pine); }
+.hero .lead { font-size: 1.15rem; color: var(--muted); max-width: 34em; margin-top: 18px; }
+.hero .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 26px; padding: 0; list-style: none; font-weight: 500; }
+.facts li { display: flex; align-items: center; gap: 8px; }
+.facts li::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--ball); }
+
+.board { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; min-width: 0; }
+.board-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+.board-top h3 { font-size: 1.4rem; }
+.board ol { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.board li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 8px; background: var(--soft); }
+.board li b { font-family: var(--font-display); font-size: 1.25rem; text-transform: uppercase; }
+.board li span { font-size: 0.9rem; }
+.board li.now span { color: var(--pine); font-weight: 600; }
+.board .note { margin-top: 12px; font-size: 0.8rem; color: var(--muted); }
+
+/* Steps */
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; list-style: none; margin: 0; padding: 0; counter-reset: s; }
+@media (max-width: 760px) { .steps { grid-template-columns: 1fr; } }
+.steps li { counter-increment: s; display: grid; gap: 6px; }
+.steps li::before { content: counter(s); font-family: var(--font-display); font-size: 2.6rem; font-weight: 800; color: var(--ball); line-height: 1; }
+.steps p { color: var(--muted); }
+
+/* Rates */
+.rates { display: grid; grid-template-columns: 1.3fr 1fr; gap: 24px; }
+@media (max-width: 860px) { .rates { grid-template-columns: 1fr; } }
+.ratecard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; min-width: 0; }
+.ratecard table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+.ratecard td { padding: 12px 0; border-bottom: 1px solid var(--line); vertical-align: baseline; }
+.ratecard tr:last-child td { border-bottom: 0; }
+.ratecard td:last-child { text-align: right; font-family: var(--font-display); font-size: 1.9rem; font-weight: 700; white-space: nowrap; }
+.ratecard td small { display: block; color: var(--muted); font-size: 0.88rem; }
+.ratecard td:last-child small { display: inline; font-family: var(--font-body); font-size: 0.9rem; font-weight: 500; }
+.ratecard .fine { margin-top: 14px; font-size: 0.88rem; color: var(--muted); }
+.packs { display: grid; gap: 12px; margin-top: 12px; }
+.pack { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 8px; background: var(--soft); }
+.pack strong { font-family: var(--font-display); font-size: 1.6rem; }
+.rates.promos { grid-template-columns: 1fr 1fr; margin-top: 24px; }
+@media (max-width: 860px) { .rates.promos { grid-template-columns: 1fr; } }
+.tag { display: inline-block; margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: var(--ball); color: #14211B; font: 600 0.72rem var(--font-body); letter-spacing: 0.06em; text-transform: uppercase; vertical-align: middle; }
+.ratecard ol { margin: 12px 0 0; padding-left: 20px; display: grid; gap: 6px; }
+
+/* Booking */
+.booker { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; display: grid; grid-template-columns: 1fr 300px; gap: 28px; }
+@media (max-width: 860px) { .booker { grid-template-columns: 1fr; padding: 18px; } }
+.booker > div { min-width: 0; }
+.step-label { font-weight: 600; margin: 18px 0 10px; }
+.step-label:first-child { margin-top: 0; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { border: 1.5px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 8px; padding: 8px 12px; font: 500 0.95rem var(--font-body); cursor: pointer; min-height: 44px; }
+.chip small { display: block; font-size: 0.75rem; color: var(--muted); }
+.chip[aria-pressed="true"] { border-color: var(--pine); background: var(--pine); color: var(--pine-ink); }
+.chip[aria-pressed="true"] small { color: inherit; }
+.chip:disabled { opacity: 0.35; cursor: not-allowed; text-decoration: line-through; }
+/* Tee sheet: rows are half-hour slots, columns are bays. Scrolls inside its own box with sticky headers. */
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; list-style: none; margin: 0 0 10px; padding: 0; font-size: 0.85rem; color: var(--muted); }
+.legend li { display: flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--line); }
+.k-open { background: var(--surface); }
+.k-sel { background: var(--pine); border-color: var(--pine) !important; }
+.k-booked, .sheet td.booked { background: repeating-linear-gradient(135deg, var(--soft) 0 6px, var(--line) 6px 7px); }
+.k-short { background: var(--bg); border-style: dashed !important; }
+.sheet-wrap { overflow: auto; max-height: 560px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); overscroll-behavior: contain; }
+.sheet { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 556px; table-layout: fixed; }
+.sheet th, .sheet td { padding: 0; height: 34px; border-bottom: 1px solid var(--line); border-left: 1px solid var(--line); }
+.sheet thead th { position: sticky; top: 0; z-index: 2; background: var(--surface); font-family: var(--font-display); font-size: 1.05rem; text-transform: uppercase; border-bottom: 1.5px solid var(--ink); }
+.sheet thead th:first-child { left: 0; z-index: 3; width: 76px; border-left: 0; }
+.sheet tbody th { position: sticky; left: 0; z-index: 1; background: var(--surface); border-left: 0; padding-right: 10px; text-align: right; white-space: nowrap; font: 500 0.8rem var(--font-mono); }
+.sheet tbody tr.half th { color: var(--muted); font-size: 0.72rem; }
+.sheet tbody tr.hour > * { border-top: 1px solid var(--line); }
+.sheet td { text-align: center; font: 500 0.72rem var(--font-mono); color: var(--muted); }
+.sheet td.past { background: var(--soft); opacity: 0.5; }
+.sheet td.short { background: var(--bg); }
+.slot { display: block; width: 100%; height: 100%; border: 0; background: transparent; font: inherit; color: var(--pine); cursor: pointer; }
+.slot:disabled { cursor: not-allowed; color: transparent; }
+.sheet td.preview { background: var(--soft); }
+.sheet td.sel { background: var(--pine); color: var(--pine-ink); border-left-color: var(--pine); }
+.sheet td.sel .slot { color: var(--pine-ink); font-weight: 600; }
+.empty { color: var(--muted); font-size: 0.95rem; padding: 12px; background: var(--soft); border-radius: 8px; }
+.summary { background: var(--soft); border-radius: var(--radius); padding: 20px; align-self: start; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 80px); }
+.summary dl { margin: 12px 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; }
+.summary dt { color: var(--muted); }
+.summary dd { margin: 0; text-align: right; font-weight: 500; }
+.summary .total { display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid var(--line); padding-top: 12px; margin-bottom: 16px; }
+.summary .total strong { font-family: var(--font-display); font-size: 2.2rem; }
+.summary .btn { width: 100%; }
+.summary .fine { margin-top: 10px; font-size: 0.8rem; color: var(--muted); }
+.confirm { border: 1.5px solid var(--pine); border-radius: var(--radius); padding: 20px; margin-top: 20px; display: grid; gap: 8px; }
+.confirm .code { font-family: var(--font-mono); font-size: 1.3rem; }
+
+/* Lessons */
+.lessons { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; }
+@media (max-width: 860px) { .lessons { grid-template-columns: 1fr; } }
+.lessons > div { min-width: 0; }
+.lesson-list { list-style: none; margin: 16px 0 0; padding: 0; display: grid; gap: 0; }
+.lesson-list li { display: flex; justify-content: space-between; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.lesson-list li b { font-family: var(--font-display); font-size: 1.5rem; white-space: nowrap; }
+.lesson-list li small { display: block; color: var(--muted); }
+.groups { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.groups span { padding: 6px 12px; border-radius: 999px; background: var(--soft); font-weight: 500; font-size: 0.9rem; }
+form.ask { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 22px; display: grid; gap: 14px; }
+form.ask label { display: grid; gap: 4px; font-weight: 500; font-size: 0.92rem; }
+form.ask input, form.ask select, form.ask textarea { font: 400 1rem var(--font-body); color: var(--ink); background: var(--bg); border: 1.5px solid var(--line); border-radius: 8px; padding: 10px 12px; width: 100%; }
+form.ask textarea { min-height: 90px; resize: vertical; }
+.ok { color: var(--pine); font-weight: 600; }
+
+/* Reviews */
+.score { display: flex; align-items: baseline; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+.score strong { font-family: var(--font-display); font-size: 4rem; line-height: 1; }
+.score .stars { color: var(--ball); font-size: 1.4rem; letter-spacing: 2px; }
+.quotes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+@media (max-width: 860px) { .quotes { grid-template-columns: 1fr; } }
+.quotes figure { margin: 0; padding-left: 16px; border-left: 3px solid var(--ball); display: grid; gap: 10px; }
+.quotes blockquote { margin: 0; font-size: 1.05rem; }
+.quotes figcaption { color: var(--muted); font-size: 0.9rem; }
+
+/* FAQ */
+.faq { display: grid; gap: 0; max-width: 760px; }
+.faq details { border-bottom: 1px solid var(--line); }
+.faq summary { cursor: pointer; padding: 16px 0; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; font-family: var(--font-mono); color: var(--pine); }
+.faq details[open] summary::after { content: "−"; }
+.faq details p { padding-bottom: 16px; color: var(--muted); max-width: 62ch; }
+
+/* Visit */
+.visit { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+@media (max-width: 760px) { .visit { grid-template-columns: 1fr; } }
+.visit > div { display: grid; gap: 6px; align-content: start; min-width: 0; }
+.visit .big { font-size: 1.15rem; font-weight: 600; }
+.copy { background: none; border: 1.5px solid var(--line); color: var(--ink); border-radius: 999px; padding: 4px 12px; font: 500 0.85rem var(--font-body); cursor: pointer; justify-self: start; }
+footer { padding-block: 32px; color: var(--muted); font-size: 0.88rem; border-top: 1px solid var(--line); }
+footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; }
+</style>
+
+<div class="testbar">Test version — this is not the live site. Bookings here are not real.</div>
+
+<header class="site">
+  <div class="wrap">
+    <a class="logo" href="#top"><span class="dot" aria-hidden="true"></span>Gutta Golf</a>
+    <nav class="main" aria-label="Main">
+      <a href="#rates">Rates</a>
+      <a href="#book">Book</a>
+      <a href="#lessons">Lessons</a>
+      <a href="#faq">FAQ</a>
+      <a href="#visit">Visit</a>
+    </nav>
+    <a class="btn" href="#book">Book a bay</a>
+  </div>
+</header>
+
+<main id="top">
+  <section id="book">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">Book</p>
+        <h2>Book a bay</h2>
+        <p>You can book up to 7 days ahead. Members can book up to 10 days ahead.</p>
+      </div>
+      <div class="booker">
+        <div>
+          <p class="step-label">1. Day</p>
+          <div class="chips" id="days"></div>
+          <p class="step-label">2. How long</p>
+          <div class="chips" id="durs"></div>
+          <p class="step-label">3. Pick a bay and start time</p>
+          <ul class="legend" aria-hidden="true">
+            <li><i class="k-open"></i>Open</li>
+            <li><i class="k-sel"></i>Your booking</li>
+            <li><i class="k-booked"></i>Booked</li>
+            <li><i class="k-short"></i>Not enough time</li>
+          </ul>
+          <div class="sheet-wrap" id="sheetWrap"><table class="sheet" id="sheet"></table></div>
+          <div id="confirm" hidden></div>
+        </div>
+        <aside class="summary" aria-live="polite">
+          <p class="eyebrow">Your booking</p>
+          <dl>
+            <dt>Day</dt><dd id="sDay">—</dd>
+            <dt>Time</dt><dd id="sTime" class="mono">—</dd>
+            <dt>Bay</dt><dd id="sBay">—</dd>
+            <dt>Subtotal</dt><dd id="sSub" class="mono">—</dd>
+            <dt>HST 13%</dt><dd id="sTax" class="mono">—</dd>
+          </dl>
+          <div class="total"><span>Total</span><strong id="sTotal">$0.00</strong></div>
+          <button class="btn" id="go" type="button" disabled>Confirm booking</button>
+          <p class="fine">Test mode: no booking is made and no card is charged.</p>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <section class="hero">
+    <div class="wrap">
+      <div>
+        <p class="eyebrow">Indoor golf · North York</p>
+        <h1>Eight private bays on <em>Lesmill Road</em></h1>
+        <p class="lead">SG Golf simulators with auto tee-up, accurate swing data, and a real person at the desk. Book online in under a minute. No app to download.</p>
+        <div class="ctas">
+          <a class="btn" href="#book">Book a bay</a>
+          <a class="btn ghost" href="#rates">See rates</a>
+        </div>
+        <ul class="facts">
+          <li>Open daily 10 AM – 12 AM</li>
+          <li>Up to 4 players per bay</li>
+          <li>Free parking</li>
+          <li>5.0 from 129 reviews</li>
+        </ul>
+      </div>
+      <div class="board" aria-label="Open bays today">
+        <div class="board-top">
+          <h3>Today's bays</h3>
+          <span class="eyebrow" id="boardDate"></span>
+        </div>
+        <ol id="board"></ol>
+        <p class="note">Sample availability for this test version.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">How it works</p>
+        <h2>From your phone to the tee</h2>
+      </div>
+      <ol class="steps">
+        <li><h3>Pick a time</h3><p>Choose a day, how long you want to play, and a start time. You see which bays are open right away.</p></li>
+        <li><h3>Pay online</h3><p>Pay with Visa, Mastercard or Amex, or use your coupon hours. Your confirmation arrives by email.</p></li>
+        <li><h3>Walk in and swing</h3><p>Your bay is ready when you arrive. The ball tees up by itself, so you can just hit.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="rates">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">Rates</p>
+        <h2>Priced per bay, not per player</h2>
+        <p>Bring up to three friends and split one hourly rate. Prices are before 13% HST.</p>
+      </div>
+      <div class="rates">
+        <div class="ratecard">
+          <h3>Hourly <span class="tag">Winter season</span></h3>
+          <table>
+            <tr><td>Weekday daytime<small>Mon–Fri, 10 AM – 3 PM</small></td><td>$35<small>/hr</small></td></tr>
+            <tr><td>Weekday evening<small>Mon–Fri, 3 PM – 12 AM</small></td><td>$45<small>/hr</small></td></tr>
+            <tr><td>Weekend<small>Sat–Sun, all day</small></td><td>$45<small>/hr</small></td></tr>
+          </table>
+          <p class="fine">Early hours (12 AM – 10 AM), weekdays and weekends: book at least 2 days in advance.</p>
+          <p class="fine">A booking that runs across 3 PM on a weekday is charged at each rate for the time spent in it.</p>
+        </div>
+        <div class="ratecard">
+          <h3>Coupon hours <span class="tag">Winter season</span></h3>
+          <p class="fine">Save with bundled hours. Buy in advance and use them whenever you book.</p>
+          <div class="packs">
+            <div class="pack"><div>10 hours<br><small>Mon–Thu only</small></div><strong>$300</strong></div>
+            <div class="pack"><div>10 hours<br><small>Any day, Mon–Sun</small></div><strong>$350</strong></div>
+          </div>
+        </div>
+      </div>
+      <div class="rates promos">
+        <div class="ratecard">
+          <h3>Grand Opening Sale</h3>
+          <p class="fine">A special one-time offer for our new customers.</p>
+          <div class="packs">
+            <div class="pack"><div>12 hours<br><small>Valid anytime, no time limits</small></div><strong>$300</strong></div>
+          </div>
+          <p class="fine">Limited quantity. Cash purchase in-store only.</p>
+        </div>
+        <div class="ratecard">
+          <h3>Early Bird <span class="tag">Coming soon</span></h3>
+          <ol>
+            <li>Check in anytime between <b>6:30 AM – 9:30 AM</b> for <b>$20/hr</b>.</li>
+            <li>Play until 10:30 AM.</li>
+            <li>After 10:30 AM, the regular hourly rate applies.</li>
+          </ol>
+          <p class="fine">We'll let you know as soon as this promotion is live.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <section id="lessons">
+    <div class="wrap">
+      <div class="lessons">
+        <div>
+          <div class="head">
+            <p class="eyebrow">Lessons</p>
+            <h2>Learn with Jason</h2>
+            <p>Our reviews mention it again and again: lessons here are patient, clear and fun. Every instructor charges the same rate.</p>
+          </div>
+          <ul class="lesson-list">
+            <li><div>Private lesson<small>1 hour. Add a private bay for $30 + tax.</small></div><b>$100</b></li>
+            <li><div>10-lesson package<small>Ten 1-hour sessions with 15 minutes of private instruction each.</small></div><b>$800</b></li>
+          </ul>
+          <p class="step-label">Group classes, 4 players across 4 bays</p>
+          <div class="groups"><span>Break 100</span><span>Break 90</span><span>Break 85</span><span>Single digit</span></div>
+        </div>
+        <form class="ask" id="ask">
+          <h3>Ask about lessons</h3>
+          <label for="aName">Name<input id="aName" required autocomplete="name"></label>
+          <label for="aEmail">Email<input id="aEmail" type="email" required autocomplete="email"></label>
+          <label for="aType">I'm interested in
+            <select id="aType">
+              <option>Private lesson</option>
+              <option>10-lesson package</option>
+              <option>Group class</option>
+              <option>Something else</option>
+            </select>
+          </label>
+          <label for="aMsg">Your goal or question<textarea id="aMsg" placeholder="e.g. I shoot around 105 and want to break 100 this year."></textarea></label>
+          <button class="btn" type="submit">Send question</button>
+          <p class="ok" id="askOk" hidden>Test mode: your question was not sent. In the live site it goes to info@guttagolf.ca.</p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">Reviews</p>
+        <h2>What golfers say</h2>
+      </div>
+      <div class="score"><strong>5.0</strong><span class="stars" aria-hidden="true">★★★★★</span><span>129 reviews on Teebly</span></div>
+      <div class="quotes">
+        <figure><blockquote>“The technology actually works. No glitches, just a seamless experience every time.”</blockquote><figcaption>Sandy P.</figcaption></figure>
+        <figure><blockquote>“8 private bays, 5 bays to accommodate both hands. Auto tee up system running on SG Golf software.”</blockquote><figcaption>Vannasinh P.</figcaption></figure>
+        <figure><blockquote>“Very clean and nice. Brand new golf simulator.”</blockquote><figcaption>Chris C.</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">FAQ</p>
+        <h2>Good to know</h2>
+      </div>
+      <div class="faq">
+        <details><summary>How many people can play in one bay?</summary><p>Up to 4 players per bay. The rate is for the bay, so it is the same price for 1 player or 4.</p></details>
+        <details><summary>How far ahead can I book?</summary><p>Up to 7 days ahead. Members can book up to 10 days ahead.</p></details>
+        <details><summary>How do I pay?</summary><p>You pay when you book, by Visa, Mastercard or Amex. You can also use coupon hours.</p></details>
+        <details><summary>Can I cancel or change my booking?</summary><p>Cancel at least 24 hours before your start time. A 4% processing fee applies to refunds.</p></details>
+        <details><summary>Do I need to bring clubs?</summary><p>Bring your own clubs. Please don't bring your own golf balls; the auto tee-up uses ours.</p></details>
+        <details><summary>Can I bring food or drinks?</summary><p>Light snacks and non-alcoholic drinks are fine. No alcohol, smoking or vaping.</p></details>
+        <details><summary>Is parking free?</summary><p>Yes, parking is free for all players.</p></details>
+        <details><summary>Do you host tournaments or company events?</summary><p>Yes. Email info@guttagolf.ca with your date and group size and we'll put a plan together.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section id="visit">
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">Visit</p>
+        <h2>Find us</h2>
+      </div>
+      <div class="visit">
+        <div>
+          <p class="eyebrow">Address</p>
+          <p class="big">244 Lesmill Rd<br>North York, ON M3B 2M3</p>
+          <a href="https://www.google.com/maps/search/?api=1&amp;query=244+Lesmill+Rd+North+York+ON" target="_blank" rel="noopener">Open in Google Maps</a>
+        </div>
+        <div>
+          <p class="eyebrow">Hours</p>
+          <p class="big">Every day<br>10 AM – 12 AM</p>
+        </div>
+        <div>
+          <p class="eyebrow">Contact</p>
+          <p class="big mono" id="phone">437-655-4161</p>
+          <button class="copy" type="button" data-copy="437-655-4161">Copy number</button>
+          <p>info@guttagolf.ca</p>
+          <a href="https://www.instagram.com/guttagolf.ca/" target="_blank" rel="noopener">Instagram @guttagolf.ca</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <span>© 2026 Gutta Golf · 244 Lesmill Rd, North York</span>
+    <span>Test version</span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var OPEN = 10, CLOSE = 24;              // 10 AM – 12 AM
+  var SLOTS = (CLOSE - OPEN) * 2;         // half-hour slots
+  var BAYS = 8, DAYS_AHEAD = 7, TAX = 0.13;
+  var DURS = [1, 1.5, 2, 3];
+
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  var state = { day: 0, dur: 1, start: null, bay: null };
+
+  function dateFor(i) { var d = new Date(today); d.setDate(d.getDate() + i); return d; }
+  function isWeekend(d) { var w = d.getDay(); return w === 0 || w === 6; }
+  function slotLabel(s) {
+    var mins = OPEN * 60 + s * 30, h = Math.floor(mins / 60) % 24, m = mins % 60;
+    var ap = h < 12 ? "AM" : "PM", hh = h % 12 === 0 ? 12 : h % 12;
+    return hh + ":" + (m ? "30" : "00") + " " + ap;
+  }
+  function money(n) { return "$" + n.toFixed(2); }
+
+  // Sample bookings: deterministic per day and bay so the page looks the same on reload.
+  function rng(seed) { return function () { seed = (seed * 9301 + 49297) % 233280; return seed / 233280; }; }
+  var cache = {};
+  function taken(dayIdx, bay) {
+    var key = dateFor(dayIdx).toDateString() + bay;
+    if (cache[key]) return cache[key];
+    var d = dateFor(dayIdx), r = rng(d.getDate() * 31 + d.getMonth() * 7 + bay * 101);
+    var arr = new Array(SLOTS).fill(false), busy = isWeekend(d) ? 0.55 : 0.35;
+    for (var s = 0; s < SLOTS; s += 2) {
+      var evening = s >= 10 ? 0.15 : 0;
+      if (r() < busy + evening) { var len = 2 + Math.floor(r() * 3); for (var k = 0; k < len && s + k < SLOTS; k++) arr[s + k] = true; s += len - 2; }
+    }
+    return (cache[key] = arr);
+  }
+  function pastSlot(dayIdx, s) {
+    if (dayIdx !== 0) return false;
+    var now = new Date(), mins = now.getHours() * 60 + now.getMinutes();
+    return OPEN * 60 + s * 30 <= mins;
+  }
+  function bayFree(dayIdx, bay, s, len) {
+    if (s + len > SLOTS || pastSlot(dayIdx, s)) return false;
+    var t = taken(dayIdx, bay);
+    for (var k = 0; k < len; k++) if (t[s + k]) return false;
+    return true;
+  }
+  function price(dayIdx, s, len) {
+    var d = dateFor(dayIdx), sum = 0;
+    for (var k = 0; k < len; k++) {
+      var hour = OPEN + (s + k) / 2;
+      sum += (isWeekend(d) ? 45 : hour < 15 ? 35 : 45) / 2;
+    }
+    return sum;
+  }
+
+  function chip(label, sub, pressed, disabled, onClick) {
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "chip";
+    b.setAttribute("aria-pressed", pressed ? "true" : "false");
+    b.textContent = label;
+    if (sub) { var sm = document.createElement("small"); sm.textContent = sub; b.appendChild(sm); }
+    b.disabled = !!disabled;
+    b.addEventListener("click", onClick);
+    return b;
+  }
+
+  var $ = function (id) { return document.getElementById(id); };
+  var fmtDay = { weekday: "short", month: "short", day: "numeric" };
+
+  function render() {
+    var len = state.dur * 2;
+    var days = $("days"); days.innerHTML = "";
+    for (var i = 0; i < DAYS_AHEAD; i++) (function (i) {
+      var d = dateFor(i);
+      days.appendChild(chip(i === 0 ? "Today" : d.toLocaleDateString("en-CA", { weekday: "short" }), d.toLocaleDateString("en-CA", { month: "short", day: "numeric" }), state.day === i, false, function () { state.day = i; state.start = null; state.bay = null; render(); $("sheetWrap").scrollTop = 0; }));
+    })(i);
+
+    var durs = $("durs"); durs.innerHTML = "";
+    DURS.forEach(function (h) {
+      durs.appendChild(chip(h + (h === 1 ? " hour" : " hours"), "", state.dur === h, false, function () {
+        state.dur = h;
+        // Keep the picked bay and time if the new length still fits there.
+        if (state.bay && !bayFree(state.day, state.bay, state.start, h * 2)) { state.start = null; state.bay = null; }
+        render();
+      }));
+    });
+
+    renderSheet(len);
+
+    var d = dateFor(state.day);
+    $("sDay").textContent = d.toLocaleDateString("en-CA", fmtDay);
+    if (state.start !== null) {
+      $("sTime").textContent = slotLabel(state.start) + " – " + slotLabel(state.start + len);
+      var sub = price(state.day, state.start, len), tax = sub * TAX;
+      $("sSub").textContent = money(sub); $("sTax").textContent = money(tax); $("sTotal").textContent = money(sub + tax);
+    } else {
+      $("sTime").textContent = "—"; $("sSub").textContent = "—"; $("sTax").textContent = "—"; $("sTotal").textContent = "$0.00";
+    }
+    $("sBay").textContent = state.bay ? "Bay " + state.bay : "—";
+    $("go").disabled = !(state.start !== null && state.bay);
+  }
+
+  // Tee sheet: one row per half hour, one column per bay. A cell is a start time;
+  // picking it books `len` slots down that bay's column.
+  function renderSheet(len) {
+    var table = $("sheet"); table.innerHTML = "";
+    var head = table.createTHead().insertRow();
+    head.appendChild(document.createElement("th")).innerHTML = '<span class="eyebrow">Time</span>';
+    for (var b = 1; b <= BAYS; b++) { var th = document.createElement("th"); th.scope = "col"; th.textContent = "Bay " + b; head.appendChild(th); }
+
+    var body = table.createTBody(), cells = [], any = false;
+    for (var s = 0; s < SLOTS; s++) {
+      if (pastSlot(state.day, s)) continue;
+      any = true;
+      var tr = body.insertRow(); tr.className = s % 2 ? "half" : "hour";
+      var rh = document.createElement("th"); rh.scope = "row"; rh.textContent = slotLabel(s); tr.appendChild(rh);
+      cells[s] = [];
+      for (var b = 1; b <= BAYS; b++) cells[s][b] = sheetCell(tr, b, s, len, cells);
+    }
+    if (!any) {
+      var td = body.insertRow().insertCell(); td.colSpan = BAYS + 1; td.style.height = "auto";
+      td.innerHTML = '<p class="empty">No more start times today. Pick another day.</p>';
+    }
+  }
+
+  function sheetCell(tr, b, s, len, cells) {
+    var td = tr.insertCell(), t = taken(state.day, b);
+    var mine = state.bay === b && state.start !== null && s >= state.start && s < state.start + len;
+    if (mine) td.className = "sel";
+    if (t[s]) {
+      td.className = "booked";
+      if (s === 0 || !t[s - 1] || pastSlot(state.day, s - 1)) td.textContent = "Booked";
+      return td;
+    }
+    if (mine && s !== state.start) return td;
+
+    var ok = bayFree(state.day, b, s, len), btn = document.createElement("button");
+    btn.type = "button"; btn.className = "slot"; btn.disabled = !ok;
+    var when = "Bay " + b + ", " + slotLabel(s);
+    if (mine) {
+      btn.textContent = slotLabel(s); btn.setAttribute("aria-pressed", "true");
+      btn.setAttribute("aria-label", when + ", selected");
+    } else if (ok) {
+      btn.textContent = "Open"; btn.setAttribute("aria-label", when + ", open");
+    } else {
+      td.className = "short"; btn.title = "Not enough open time here for " + state.dur + (state.dur === 1 ? " hour" : " hours");
+      btn.setAttribute("aria-label", when + ", " + btn.title.toLowerCase());
+    }
+    function mark(on) { for (var k = 0; k < len; k++) if (cells[s + k]) { var c = cells[s + k][b]; if (c) c.classList.toggle("preview", on); } }
+    if (ok && !mine) {
+      btn.addEventListener("mouseenter", function () { mark(true); });
+      btn.addEventListener("mouseleave", function () { mark(false); });
+      btn.addEventListener("focus", function () { mark(true); });
+      btn.addEventListener("blur", function () { mark(false); });
+    }
+    btn.addEventListener("click", function () {
+      if (mine) { state.start = null; state.bay = null; } else { state.start = s; state.bay = b; }
+      render();
+    });
+    td.appendChild(btn);
+    return td;
+  }
+
+  $("go").addEventListener("click", function () {
+    var len = state.dur * 2, code = "GG-" + Math.random().toString(36).slice(2, 7).toUpperCase();
+    var box = $("confirm");
+    box.className = "confirm"; box.hidden = false;
+    box.innerHTML = "";
+    var h = document.createElement("h3"); h.textContent = "Booking confirmed (test)";
+    var c = document.createElement("p"); c.className = "code"; c.textContent = code;
+    var p = document.createElement("p");
+    p.textContent = dateFor(state.day).toLocaleDateString("en-CA", fmtDay) + ", " + slotLabel(state.start) + " – " + slotLabel(state.start + len) + ", Bay " + state.bay + ". This was a test: no booking was made and no card was charged.";
+    box.append(h, c, p);
+    taken(state.day, state.bay).fill(true, state.start, state.start + len);
+    state.start = null; state.bay = null; render(); renderBoard();
+    box.scrollIntoView({ block: "nearest" });
+  });
+
+  function renderBoard() {
+    var ol = $("board"); ol.innerHTML = "";
+    $("boardDate").textContent = today.toLocaleDateString("en-CA", fmtDay);
+    for (var b = 1; b <= BAYS; b++) {
+      var next = null;
+      for (var s = 0; s < SLOTS; s++) if (bayFree(0, b, s, 2)) { next = s; break; }
+      var li = document.createElement("li"), first = next !== null && !pastSlot(0, next) && (next === 0 || pastSlot(0, next - 1));
+      if (first) li.className = "now";
+      var bb = document.createElement("b"); bb.textContent = "Bay " + b;
+      var sp = document.createElement("span"); sp.textContent = next === null ? "Full today" : first ? "Open now" : "Open " + slotLabel(next);
+      li.append(bb, sp); ol.appendChild(li);
+    }
+  }
+
+  $("ask").addEventListener("submit", function (e) { e.preventDefault(); $("askOk").hidden = false; });
+
+  document.querySelectorAll("[data-copy]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var text = btn.getAttribute("data-copy");
+      try {
+        navigator.clipboard.writeText(text).then(function () { btn.textContent = "Copied"; }, function () { selectPhone(); });
+      } catch (err) { selectPhone(); }
+    });
+  });
+  function selectPhone() { var r = document.createRange(); r.selectNodeContents($("phone")); var s = getSelection(); s.removeAllRanges(); s.addRange(r); }
+
+  render(); renderBoard();
+})();
+</script>

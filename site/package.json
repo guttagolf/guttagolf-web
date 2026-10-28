@@ -1,0 +1,8 @@
+{
+  "name": "guttagolf-web",
+  "private": true,
+  "description": "Gutta Golf site: static pages plus Stripe payment functions in api/",
+  "dependencies": {
+    "stripe": "17.7.0"
+  }
+}

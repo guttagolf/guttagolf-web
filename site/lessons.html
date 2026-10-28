@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Golf Lessons | Gutta Golf</title>
+<meta name="description" content="Indoor golf lessons in North York with Jason and team. Private lessons $100/hr, 10-lesson package $800, group classes by skill level.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body data-page="lessons">
+<div id="gg-header"></div>
+
+<main>
+  <section class="page-hero">
+    <div class="wrap">
+      <p class="eyebrow">Lessons</p>
+      <h1>Learn with <em>Jason</em></h1>
+      <p class="lead">Patient, clear and fun: that's what our reviews say about lessons here. Every instructor charges the same rate, and the simulator shows you the numbers behind each change.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="split">
+        <div>
+          <div class="coach">
+            <div class="avatar" aria-hidden="true">J</div>
+            <div>
+              <h3>Jason</h3>
+              <p class="muted">Head instructor</p>
+            </div>
+          </div>
+          <p class="draft" style="margin-top: 20px">Draft: add Jason's background here (years teaching, certifications, what he likes to work on). A photo goes in the circle above.</p>
+
+          <p class="step-label" style="margin-top: 32px">Prices</p>
+          <ul class="lesson-list">
+            <li><div>Private lesson<small>1 hour. Add a private bay for $30 + tax.</small></div><b>$100</b></li>
+            <li><div>10-lesson package<small>Ten 1-hour sessions with 15 minutes of private instruction each</small></div><b>$800</b></li>
+          </ul>
+          <p class="step-label" style="margin-top: 28px">Group classes, 4 players across 4 bays</p>
+          <div class="groups"><span>Break 100</span><span>Break 90</span><span>Break 85</span><span>Single digit</span></div>
+        </div>
+
+        <form class="card ask" id="ask">
+          <h3>Ask about lessons</h3>
+          <label for="aName">Name<input id="aName" required autocomplete="name"></label>
+          <label for="aEmail">Email<input id="aEmail" type="email" required autocomplete="email"></label>
+          <label for="aType">I'm interested in
+            <select id="aType">
+              <option>Private lesson</option>
+              <option>10-lesson package</option>
+              <option>Group class</option>
+              <option>Something else</option>
+            </select>
+          </label>
+          <label for="aMsg">Your goal or question<textarea id="aMsg" placeholder="e.g. I shoot around 105 and want to break 100 this year."></textarea></label>
+          <button class="btn" type="submit">Send question</button>
+          <p class="ok" id="askOk" hidden>Test mode: your question was not sent. On the live site it goes to info@guttagolf.ca.</p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <div class="head">
+        <p class="eyebrow">How lessons work</p>
+        <h2>Your first lesson</h2>
+      </div>
+      <ol class="steps">
+        <li><h3>Tell us your goal</h3><p>Send the form above or call us. A score target, a slice to fix, or just getting started are all good goals.</p></li>
+        <li><h3>Swing on the simulator</h3><p>Your coach watches your swing and the shot data together, so every tip comes with a number.</p></li>
+        <li><h3>Practice between lessons</h3><p>Book a bay on your own and work on the drill. Coupon hours make it cheaper.</p></li>
+      </ol>
+    </div>
+  </section>
+</main>
+
+<div id="gg-footer"></div>
+<script src="pricing.js"></script>
+<script src="site.js"></script>
+<script>
+document.getElementById("ask").addEventListener("submit", function (e) { e.preventDefault(); document.getElementById("askOk").hidden = false; });
+</script>
+</body>
+</html>

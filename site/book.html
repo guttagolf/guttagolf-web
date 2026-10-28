@@ -63,9 +63,14 @@
           <div class="total"><span>Total</span><strong id="sTotal">$0.00</strong></div>
           <label class="field">Name<input id="cName" autocomplete="name" required></label>
           <label class="field">Phone<input id="cPhone" type="tel" autocomplete="tel" required></label>
+          <fieldset class="pay-pick">
+            <legend>Payment</legend>
+            <label><input type="radio" name="pay" value="now" checked><span><b>Pay now</b><small>Card, Apple Pay or Google Pay</small></span></label>
+            <label><input type="radio" name="pay" value="venue"><span><b>Pay at Gutta</b><small>Card or cash when you arrive</small></span></label>
+          </fieldset>
           <button class="btn" id="go" type="button" disabled>Pay and book</button>
           <p class="pay-msg" id="payMsg" role="alert" hidden></p>
-          <p class="fine">You pay on Stripe's secure page: card, Apple Pay or Google Pay. We never see your card number.</p>
+          <p class="fine" id="payFine">You pay on Stripe's secure page: card, Apple Pay or Google Pay. We never see your card number.</p>
         </aside>
       </div>
       <div class="tt-bar" id="ttBar" hidden>
@@ -85,6 +90,7 @@
         <li>Bring your own clubs</li>
         <li>Please don't bring golf balls; the auto tee-up uses ours</li>
         <li>Cancel at least 24 hours ahead for a refund (4% processing fee)</li>
+        <li>Paying at Gutta? Call or text us if you can't make it, so someone else can play</li>
         <li>Light snacks and non-alcoholic drinks are fine</li>
         <li class="no">No alcohol, smoking or vaping</li>
         <li>Late night (12 AM – 6 AM)? Book by 9 PM the same day. 6 – 9 AM is closed</li>

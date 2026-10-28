@@ -42,6 +42,11 @@ create index if not exists bookings_customer_idx on public.bookings (customer_id
 -- Added for the admin payments view (safe to run again on an existing table).
 alter table public.bookings add column if not exists stripe_payment_intent text;
 
+-- Added for paying at Gutta (safe to run again). An unpaid booking has paid_at null until the admin marks it paid.
+alter table public.bookings add column if not exists paid_at timestamptz;
+alter table public.bookings add column if not exists pay_method text check (pay_method in ('stripe', 'card', 'cash', 'other'));
+update public.bookings set paid_at = created_at, pay_method = 'stripe' where stripe_session_id is not null and paid_at is null;
+
 -- Everything that happens: admin logins, bookings, payments, door and bay power. Shown and downloaded in admin.html.
 create table if not exists public.logs (
   id        bigint generated always as identity primary key,

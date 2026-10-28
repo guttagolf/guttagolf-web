@@ -4,25 +4,24 @@
 //   GET    /api/admin?view=payments&from=…&to=…            →  { payments, stripeTest } every booking (any status) in the date range
 //   GET    /api/admin?view=customers&q=…                   →  { customers } with booking count and amount paid
 //   GET    /api/admin?view=logs&from=ISO&to=ISO&category=…&q=…  →  { logs } newest first
-//   POST   /api/admin  { date, bay, start, len, name, phone }  →  phone / walk-in booking, priced by pricing.js
+//   POST   /api/admin  { date, bay, start, len, name, phone, pay }  →  phone / walk-in booking, priced by pricing.js (pay: card | cash | other, or none for pay later)
+//   PATCH  /api/admin?code=GG-XXXXX  { pay }               →  marks a pay-at-Gutta booking paid (card | cash | other), or unpaid again (null)
 //   DELETE /api/admin?code=GG-XXXXX                         →  cancels the booking (kept in the table as canceled)
-const crypto = require("crypto");
 const P = require("../pricing.js");
 const db = require("./_db.js");
 const auth = require("./_auth.js");
 const { torontoNow } = require("./_booking.js");
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
-const BOOKING_COLS = "code,date,bay,start_slot,len,subtotal_cents,tax_cents,total_cents,source,status,stripe_payment_intent,created_at,canceled_at,customers(name,phone,email)";
-
-function newCode() { return "GG-" + crypto.randomBytes(4).toString("hex").slice(0, 5).toUpperCase(); }
+const BOOKING_COLS = "code,date,bay,start_slot,len,subtotal_cents,tax_cents,total_cents,source,status,stripe_payment_intent,pay_method,paid_at,created_at,canceled_at,customers(name,phone,email)";
+const PAY = /^(card|cash|other)$/;
 
 function shape(b) {
   const c = b.customers || {};
   return {
     code: b.code, date: b.date, bay: b.bay, start: b.start_slot, len: b.len,
     subtotal: b.subtotal_cents / 100, tax: b.tax_cents / 100, total: b.total_cents / 100,
-    source: b.source, status: b.status, paymentIntent: b.stripe_payment_intent, created: b.created_at, canceled: b.canceled_at,
+    source: b.source, status: b.status, paymentIntent: b.stripe_payment_intent, payMethod: b.pay_method, paidAt: b.paid_at, created: b.created_at, canceled: b.canceled_at,
     name: c.name, phone: c.phone, email: c.email
   };
 }
@@ -48,12 +47,12 @@ async function customers(q) {
     if (digits.length >= 3) parts.push(`phone_key.like.*${digits}*`);
     filter = "&or=" + encodeURIComponent("(" + parts.join(",") + ")");
   }
-  const rows = await db.rest(`customers?select=id,name,phone,email,created_at,bookings(date,total_cents,status)${filter}&order=updated_at.desc&limit=300`);
+  const rows = await db.rest(`customers?select=id,name,phone,email,created_at,bookings(date,total_cents,status,paid_at)${filter}&order=updated_at.desc&limit=300`);
   return rows.map((c) => {
     const live = (c.bookings || []).filter((b) => b.status !== "canceled");
     return {
       name: c.name, phone: c.phone, email: c.email, created: c.created_at,
-      count: live.length, spent: live.reduce((n, b) => n + b.total_cents, 0) / 100,
+      count: live.length, spent: live.filter((b) => b.paid_at).reduce((n, b) => n + b.total_cents, 0) / 100,
       last: live.map((b) => b.date).sort().pop() || null
     };
   });
@@ -74,7 +73,7 @@ async function summary() {
   const now = torontoNow(), today = now.key, month = today.slice(0, 8) + "01";
   const [todayRows, monthRows, conflicts, recent] = await Promise.all([
     bookingsOn(today),
-    db.rest(`bookings?select=total_cents,tax_cents,source&status=eq.confirmed&date=gte.${month}&date=lte.${today}`),
+    db.rest(`bookings?select=total_cents,tax_cents,pay_method&status=eq.confirmed&date=gte.${month}&date=lte.${today}`),
     db.rest(`bookings?select=${BOOKING_COLS}&status=eq.conflict&date=gte.${today}&order=date,start_slot`),
     db.rest("logs?select=*&order=at.desc&limit=12")
   ]);
@@ -82,7 +81,8 @@ async function summary() {
   return {
     today, nowMins: now.mins, bookings: todayRows,
     month: { from: month, count: monthRows.length, total: sum(monthRows, "total_cents"), tax: sum(monthRows, "tax_cents"),
-      online: sum(monthRows.filter((r) => r.source === "online"), "total_cents") },
+      online: sum(monthRows.filter((r) => r.pay_method === "stripe"), "total_cents"),
+      unpaid: sum(monthRows.filter((r) => !r.pay_method), "total_cents") },
     conflicts: conflicts.map(shape), logs: recent
   };
 }
@@ -96,19 +96,29 @@ async function add(body, actor, req) {
   if (!(start >= 0 && len >= P.MIN_LEN && len <= P.MAX_LEN && start + len <= P.SLOTS)) return { status: 400, error: "영업 종료 시간을 넘습니다. 시작 시간이나 이용 시간을 줄여 주세요." };
   if (!name || phone.replace(/\D/g, "").length < 7) return { status: 400, error: "이름과 전화번호를 입력하세요." };
 
+  const pay = PAY.test(String(b.pay || "")) ? b.pay : null;
+
   const amounts = P.cents(P.RATES, day, start, len);
-  for (let i = 0; i < 3; i++) {
-    try {
-      const row = await db.addBooking({ code: newCode(), date: b.date, bay, start, len, name, phone, amounts, source: "admin" });
-      await db.log("booking", { action: "booking_add", actor, ref: row.code, req,
-        detail: { date: b.date, bay, time: `${P.slotLabel(start)} – ${P.slotLabel(start + len)}`, name, phone, total: amounts.total / 100 } });
-      return { status: 200, code: row.code };
-    } catch (err) {
-      if (err.code === "23P01") return { status: 409, error: `Bay ${bay}는 그 시간에 이미 예약이 있습니다.` };
-      if (err.code !== "23505") throw err;                     // duplicate code: try another
-    }
+  try {
+    const row = await db.addWithCode({ date: b.date, bay, start, len, name, phone, amounts, source: "admin", payMethod: pay });
+    await db.log("booking", { action: "booking_add", actor, ref: row.code, req,
+      detail: { date: b.date, bay, time: `${P.slotLabel(start)} – ${P.slotLabel(start + len)}`, name, phone, total: amounts.total / 100, pay } });
+    return { status: 200, code: row.code };
+  } catch (err) {
+    if (err.code === "23P01") return { status: 409, error: `Bay ${bay}는 그 시간에 이미 예약이 있습니다.` };
+    throw err;
   }
-  throw new Error("Could not make a unique booking code.");
+}
+
+// Marks a booking paid at Gutta, or unpaid again. Stripe payments are left alone.
+async function setPaid(code, pay, actor, req) {
+  if (pay !== null && !PAY.test(String(pay))) return { status: 400, error: "결제 수단을 확인하세요." };
+  const rows = await db.rest(`bookings?code=eq.${encodeURIComponent(code)}&status=neq.canceled&or=(pay_method.is.null,pay_method.neq.stripe)&select=code,total_cents`, {
+    method: "PATCH", body: { pay_method: pay, paid_at: pay ? new Date().toISOString() : null }
+  });
+  if (!rows.length) return { status: 404, error: "예약을 찾지 못했거나 온라인 결제 예약입니다." };
+  await db.log("payment", { action: pay ? "paid_venue" : "paid_venue_undo", actor, ref: code, req, detail: { pay, total: rows[0].total_cents / 100 } });
+  return { status: 200 };
 }
 
 module.exports = async (req, res) => {
@@ -136,19 +146,25 @@ module.exports = async (req, res) => {
       const r = await add(req.body, actor, req);
       return r.error ? res.status(r.status).json({ error: r.error }) : res.status(200).json({ code: r.code });
     }
+    if (req.method === "PATCH") {
+      const code = String(q.code || "");
+      if (!/^GG-[A-Z0-9]+$/.test(code)) return res.status(400).json({ error: "예약 코드를 확인하세요." });
+      const r = await setPaid(code, (req.body || {}).pay || null, actor, req);
+      return r.error ? res.status(r.status).json({ error: r.error }) : res.status(200).json({ ok: true });
+    }
     if (req.method === "DELETE") {
       const code = String(q.code || "");
       if (!/^GG-[A-Z0-9]+$/.test(code)) return res.status(400).json({ error: "예약 코드를 확인하세요." });
-      const rows = await db.rest(`bookings?code=eq.${encodeURIComponent(code)}&status=neq.canceled&select=code,date,bay,start_slot,len,total_cents,source`, {
+      const rows = await db.rest(`bookings?code=eq.${encodeURIComponent(code)}&status=neq.canceled&select=code,date,bay,start_slot,len,total_cents,source,pay_method`, {
         method: "PATCH", body: { status: "canceled", canceled_at: new Date().toISOString() }
       });
       if (!rows.length) return res.status(404).json({ error: "예약을 찾지 못했습니다." });
       const b = rows[0];
       await db.log("booking", { action: "booking_cancel", actor, ref: code, req,
-        detail: { date: b.date, bay: b.bay, time: `${P.slotLabel(b.start_slot)} – ${P.slotLabel(b.start_slot + b.len)}`, total: b.total_cents / 100, source: b.source } });
+        detail: { date: b.date, bay: b.bay, time: `${P.slotLabel(b.start_slot)} – ${P.slotLabel(b.start_slot + b.len)}`, total: b.total_cents / 100, source: b.source, pay: b.pay_method } });
       return res.status(200).json({ ok: true });
     }
-    res.setHeader("Allow", "GET, POST, DELETE");
+    res.setHeader("Allow", "GET, POST, PATCH, DELETE");
     return res.status(405).json({ error: "Method not allowed." });
   } catch (err) {
     console.error("Admin API failed:", err.message);

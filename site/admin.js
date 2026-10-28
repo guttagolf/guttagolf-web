@@ -26,6 +26,10 @@
   }
   function dayLabel(key) { var d = P.parseDay(key); return d ? d.toLocaleDateString("ko-KR", { month: "short", day: "numeric", weekday: "short" }) : key; }
   function pill(text, kind) { return el("span", text, "pill" + (kind ? " " + kind : "")); }
+  var PAYM = { stripe: "온라인 결제", card: "현장 카드", cash: "현장 현금", other: "현장 기타" };
+  function payLabel(b) { return b.payMethod ? PAYM[b.payMethod] : "미결제"; }
+  function payPill(b) { return pill(payLabel(b), b.payMethod ? "ok" : "warn"); }
+  function srcLabel(b) { return b.source === "admin" ? "전화·현장" : "온라인 예약"; }
   function addDays(d, n) { var x = new Date(d); x.setDate(x.getDate() + n); return x; }
 
   function download(name, text, type) {
@@ -68,6 +72,8 @@
   var ACT = {
     login: "로그인", login_fail: "로그인 실패", login_blocked: "로그인 차단", logout: "로그아웃",
     booking_add: "예약 추가 (전화·현장)", booking_cancel: "예약 취소",
+    booking_venue: "온라인 예약 (현장 결제 예정)", booking_venue_limit: "현장 결제 예약 제한에 걸림",
+    paid_venue: "현장 결제 받음", paid_venue_undo: "현장 결제 되돌림",
     checkout_start: "결제 페이지 열림", paid: "온라인 결제 완료", paid_conflict: "결제됐지만 시간 겹침",
     door_open: "문 열기", power_on: "전원 켜기", power_off: "전원 끄기",
     admin_api: "관리자 API 오류", booking_save: "예약 저장 실패", checkout: "결제 페이지 오류"
@@ -141,12 +147,12 @@
       $("dHours").textContent = hoursLabel(slots);
       $("dSales").textContent = GG.money(sales);
       $("dMonth").textContent = GG.money(s.month.total);
-      $("dMonthLabel").textContent = "이번 달 매출 (" + s.month.count + "건)";
+      $("dMonthLabel").textContent = "이번 달 매출 (" + s.month.count + "건" + (s.month.unpaid ? ", 미결제 " + GG.money(s.month.unpaid) : "") + ")";
 
       var next = s.bookings.filter(function (b) { return P.slotMins(b.start + b.len) > s.nowMins; }), tb = $("dNext");
       tb.innerHTML = "";
-      next.forEach(function (b) { row(tb, [[timeRange(b), "mono"], "Bay " + b.bay, b.name, [b.phone, "mono"]]); });
-      if (!next.length) empty(tb, 4, "남은 예약이 없습니다.");
+      next.forEach(function (b) { row(tb, [[timeRange(b), "mono"], "Bay " + b.bay, b.name, [b.phone, "mono"], payPill(b)]); });
+      if (!next.length) empty(tb, 5, "남은 예약이 없습니다.");
 
       var ca = $("conflictAlert");
       ca.hidden = !s.conflicts.length;
@@ -167,32 +173,59 @@
     $("day").value = key;
     updatePrice();
     var tbody = $("list");
-    empty(tbody, 9, "불러오는 중…");
+    empty(tbody, 10, "불러오는 중…");
     api("api/admin?view=bookings&date=" + key).then(function (j) {
       if (P.dayKey(sel) !== key) return;
-      var slots = 0, sales = 0, online = 0;
+      var slots = 0, sales = 0, unpaid = 0;
       tbody.innerHTML = "";
       j.bookings.forEach(function (b) {
-        slots += b.len; sales += b.total; if (b.source === "online") online++;
+        slots += b.len; sales += b.total; if (!b.payMethod) unpaid += b.total;
         var x = el("button", "취소", "small-btn danger"); x.type = "button";
         x.addEventListener("click", function () {
-          var warn = b.source === "online" ? "\n\n온라인 결제 예약입니다. 환불은 Stripe에서 따로 해야 합니다." : "";
+          var warn = b.payMethod === "stripe" ? "\n\n온라인 결제 예약입니다. 환불은 Stripe에서 따로 해야 합니다." : b.payMethod ? "\n\n현장에서 이미 결제한 예약입니다. 환불은 따로 해 주세요." : "";
           if (!confirm((b.name || "") + "님 " + P.slotLabel(b.start) + " Bay " + b.bay + " 예약을 취소할까요?" + warn)) return;
           x.disabled = true;
           api("api/admin?code=" + encodeURIComponent(b.code), { method: "DELETE", body: {} })
             .then(loaders.bookings).catch(function (err) { x.disabled = false; alert(err.message); });
         });
-        var src = b.status === "conflict" ? pill("시간 겹침", "bad") : pill(b.source === "admin" ? "전화·현장" : "온라인", b.source === "online" ? "ok" : "");
-        row(tbody, [[timeRange(b), "mono"], "Bay " + b.bay, b.name, [b.phone, "mono"], b.email, [GG.money(b.total), "num mono"], src, [b.code, "mono"], x],
+        var src = b.status === "conflict" ? pill("시간 겹침", "bad") : srcLabel(b);
+        row(tbody, [[timeRange(b), "mono"], "Bay " + b.bay, b.name, [b.phone, "mono"], b.email, [GG.money(b.total), "num mono"], src, payCell(b), [b.code, "mono"], x],
           b.status === "conflict" ? "bad" : "");
       });
-      if (!j.bookings.length) empty(tbody, 9, "이 날짜에는 예약이 없습니다.");
+      if (!j.bookings.length) empty(tbody, 10, "이 날짜에는 예약이 없습니다.");
       $("stCount").textContent = j.bookings.length;
       $("stHours").textContent = hoursLabel(slots);
       $("stSales").textContent = GG.money(sales);
-      $("stOnline").textContent = online;
-    }).catch(function (err) { empty(tbody, 9, err.message); });
+      $("stUnpaid").textContent = GG.money(unpaid);
+    }).catch(function (err) { empty(tbody, 10, err.message); });
   };
+
+  // Payment cell: Stripe payments are fixed; a pay-at-Gutta booking gets a "결제 받음" menu, or an undo once paid.
+  function setPay(b, pay, ctl) {
+    ctl.disabled = true;
+    api("api/admin?code=" + encodeURIComponent(b.code), { method: "PATCH", body: { pay: pay } })
+      .then(loaders.bookings).catch(function (err) { ctl.disabled = false; alert(err.message); });
+  }
+  function payCell(b) {
+    var box = el("span", null, "pay-cell");
+    box.appendChild(payPill(b));
+    if (b.payMethod === "stripe") return box;
+    if (b.payMethod) {
+      var u = el("button", "되돌리기", "small-btn"); u.type = "button";
+      u.addEventListener("click", function () { if (confirm(b.code + " 결제를 미결제로 되돌릴까요?")) setPay(b, null, u); });
+      box.appendChild(u);
+      return box;
+    }
+    var sel = el("select", null, "small-btn"); sel.setAttribute("aria-label", "결제 받음");
+    [["", "결제 받음…"], ["card", "카드"], ["cash", "현금"], ["other", "기타"]].forEach(function (o) { sel.add(new Option(o[1], o[0])); });
+    sel.addEventListener("change", function () {
+      if (!sel.value) return;
+      if (confirm((b.name || "") + "님 " + GG.money(b.total) + "을 " + sel.options[sel.selectedIndex].text + "(으)로 받았나요?")) setPay(b, sel.value, sel);
+      else sel.value = "";
+    });
+    box.appendChild(sel);
+    return box;
+  }
   function moveDay(n) { sel = addDays(sel, n); loaders.bookings(); }
   $("prevDay").addEventListener("click", function () { moveDay(-1); });
   $("nextDay").addEventListener("click", function () { moveDay(1); });
@@ -211,8 +244,8 @@
     if (sel < GG.today) return say("addMsg", "지난 날짜에는 예약을 추가할 수 없습니다.");
     if (start + len > P.SLOTS) return say("addMsg", "영업 종료 시간을 넘습니다. 시작 시간이나 이용 시간을 줄여 주세요.");
     var btn = e.submitter || this.querySelector("button"); btn.disabled = true;
-    api("api/admin", { method: "POST", body: { date: P.dayKey(sel), bay: +$("aBay").value, start: start, len: len, name: $("aName").value.trim(), phone: $("aPhone").value.trim() } })
-      .then(function (j) { $("aName").value = ""; $("aPhone").value = ""; say("addMsg", "예약을 추가했습니다 (" + j.code + ").", true); loaders.bookings(); })
+    api("api/admin", { method: "POST", body: { date: P.dayKey(sel), bay: +$("aBay").value, start: start, len: len, name: $("aName").value.trim(), phone: $("aPhone").value.trim(), pay: $("aPay").value || null } })
+      .then(function (j) { $("aName").value = ""; $("aPhone").value = ""; $("aPay").value = ""; say("addMsg", "예약을 추가했습니다 (" + j.code + ").", true); loaders.bookings(); })
       .catch(function (err) { say("addMsg", err.message); })
       .then(function () { btn.disabled = false; });
   });
@@ -223,15 +256,16 @@
   $("pTo").value = P.dayKey(addDays(GG.today, P.DAYS_AHEAD));
   var STATUS = { confirmed: ["확정", "ok"], conflict: ["시간 겹침", "bad"], canceled: ["취소", ""] };
   function payFiltered() {
-    var src = $("pSource").value, st = $("pStatus").value;
-    return payRows.filter(function (p) { return (!src || p.source === src) && (!st || p.status === st); });
+    var src = $("pSource").value, st = $("pStatus").value, pay = $("pPay").value;
+    return payRows.filter(function (p) { return (!src || p.source === src) && (!st || p.status === st) && (!pay || payKind(p) === pay); });
   }
+  function payKind(p) { return !p.payMethod ? "unpaid" : p.payMethod === "stripe" ? "stripe" : "venue"; }
   var stripeTest = true;
   function renderPayments() {
-    var rows = payFiltered(), tb = $("pList"), sum = { total: 0, tax: 0, online: 0, admin: 0 };
+    var rows = payFiltered(), tb = $("pList"), sum = { total: 0, tax: 0, stripe: 0, venue: 0, unpaid: 0 };
     tb.innerHTML = "";
     rows.forEach(function (p) {
-      if (p.status !== "canceled") { sum.total += p.total; sum.tax += p.tax; sum[p.source] += p.total; }
+      if (p.status !== "canceled") { sum.total += p.total; sum.tax += p.tax; sum[payKind(p)] += p.total; }
       var link = "—";
       if (p.paymentIntent) {
         link = el("a", "보기 ↗"); link.target = "_blank"; link.rel = "noopener";
@@ -239,29 +273,30 @@
       }
       row(tb, [dayLabel(p.date), [timeRange(p), "mono"], "Bay " + p.bay, (p.name || "—") + (p.phone ? " · " + p.phone : ""),
         [GG.money(p.subtotal), "num mono"], [GG.money(p.tax), "num mono"], [GG.money(p.total), "num mono"],
-        p.source === "online" ? "온라인" : "전화·현장", pill(STATUS[p.status][0], STATUS[p.status][1]), [p.code, "mono"], link],
+        srcLabel(p), p.status === "canceled" ? payLabel(p) : payPill(p), pill(STATUS[p.status][0], STATUS[p.status][1]), [p.code, "mono"], link],
         p.status === "canceled" ? "off" : p.status === "conflict" ? "bad" : "");
     });
-    if (!rows.length) empty(tb, 11, "이 기간에는 결제 내역이 없습니다.");
+    if (!rows.length) empty(tb, 12, "이 기간에는 결제 내역이 없습니다.");
     $("pTotal").textContent = GG.money(sum.total); $("pTax").textContent = GG.money(sum.tax);
-    $("pOnline").textContent = GG.money(sum.online); $("pAdmin").textContent = GG.money(sum.admin);
+    $("pOnline").textContent = GG.money(sum.stripe); $("pVenue").textContent = GG.money(sum.venue); $("pUnpaid").textContent = GG.money(sum.unpaid);
   }
   loaders.payments = function () {
-    empty($("pList"), 11, "불러오는 중…");
+    empty($("pList"), 12, "불러오는 중…");
     api("api/admin?view=payments&from=" + $("pFrom").value + "&to=" + $("pTo").value).then(function (j) {
       payRows = j.payments; stripeTest = j.stripeTest;
       $("pMode").textContent = stripeTest ? "Stripe 테스트 모드입니다 (실제 돈이 오가지 않음)." : "";
       renderPayments();
-    }).catch(function (err) { empty($("pList"), 11, err.message); });
+    }).catch(function (err) { empty($("pList"), 12, err.message); });
   };
   $("pLoad").addEventListener("click", loaders.payments);
   $("pSource").addEventListener("change", renderPayments);
   $("pStatus").addEventListener("change", renderPayments);
+  $("pPay").addEventListener("change", renderPayments);
   $("pCsv").addEventListener("click", function () {
-    var rows = [["예약일", "시작", "끝", "베이", "이름", "전화", "이메일", "금액", "HST", "합계", "경로", "상태", "코드", "Stripe 결제 ID", "예약 시각", "취소 시각"]];
+    var rows = [["예약일", "시작", "끝", "베이", "이름", "전화", "이메일", "금액", "HST", "합계", "경로", "결제", "결제 시각", "상태", "코드", "Stripe 결제 ID", "예약 시각", "취소 시각"]];
     payFiltered().forEach(function (p) {
       rows.push([p.date, P.slotLabel(p.start), P.slotLabel(p.start + p.len), p.bay, p.name, p.phone, p.email, p.subtotal.toFixed(2), p.tax.toFixed(2), p.total.toFixed(2),
-        p.source === "online" ? "온라인" : "전화·현장", STATUS[p.status][0], p.code, p.paymentIntent, stamp(p.created), p.canceled ? stamp(p.canceled) : ""]);
+        srcLabel(p), payLabel(p), p.paidAt ? stamp(p.paidAt) : "", STATUS[p.status][0], p.code, p.paymentIntent, stamp(p.created), p.canceled ? stamp(p.canceled) : ""]);
     });
     download("gutta-payments_" + $("pFrom").value + "_" + $("pTo").value + ".csv", csv(rows), "text/csv;charset=utf-8");
   });
@@ -319,6 +354,7 @@
         var card = el("div", null, "bay"), r = el("div", null, "row");
         card.appendChild(el("b", "Bay " + d.key.slice(3)));
         var st = el("span", d.ready ? "상태 모름" : "연결 안 됨", "state"); st.setAttribute("data-state", d.key); card.appendChild(st);
+        if (d.plugs > 1) card.appendChild(el("span", "플러그 " + d.plugs + "개", "state"));
         [["on", "켜기", ""], ["off", "끄기", " danger"]].forEach(function (a) {
           var btn = el("button", a[1], "small-btn" + a[2]); btn.type = "button"; btn.disabled = !d.ready;
           btn.addEventListener("click", function () {
@@ -348,20 +384,21 @@
   });
 
   // One bay at a time: Shelly Cloud takes about one request per second.
-  function eachBay(fn, doneText) {
+  // doneText may be a function of the failure count; withDoor includes the door.
+  function eachBay(fn, doneText, withDoor) {
     if (busy) return;
-    var keys = Object.keys(devReady).filter(function (k) { return k !== "door" && devReady[k]; });
-    if (!keys.length) return say("devMsg", "연결된 베이가 없습니다.");
+    var keys = Object.keys(devReady).filter(function (k) { return (withDoor || k !== "door") && devReady[k]; });
+    if (!keys.length) return say("devMsg", "연결된 장비가 없습니다.");
     busy = true;
     var fails = 0;
     keys.reduce(function (p, k, i) {
       return p.then(function () {
-        say("devMsg", "Bay " + k.slice(3) + " 처리 중… (" + (i + 1) + "/" + keys.length + ")", true);
+        say("devMsg", refLabel(k) + " 처리 중… (" + (i + 1) + "/" + keys.length + ")", true);
         return fn(k).catch(function () { fails++; setState(k, null); }).then(function () { return new Promise(function (r) { setTimeout(r, 1100); }); });
       });
     }, Promise.resolve()).then(function () {
       busy = false;
-      say("devMsg", fails ? fails + "개 베이가 응답하지 않았습니다." : doneText, !fails);
+      say("devMsg", typeof doneText === "function" ? doneText(fails) : fails ? fails + "개 베이가 응답하지 않았습니다." : doneText, !fails);
       devLogs();
     });
   }
@@ -375,6 +412,28 @@
   });
   $("allStatus").addEventListener("click", function () {
     eachBay(function (k) { return api("api/devices?status=" + k).then(function (j) { setState(k, j.on); }); }, "상태를 확인했습니다.");
+  });
+  // Reads every plug (door included) without switching anything and lists which ones answer.
+  $("devTest").addEventListener("click", function () {
+    if (busy) return;
+    var tb = $("devTestList"), total = 0, good = 0;
+    tb.innerHTML = ""; $("devTestWrap").hidden = false;
+    eachBay(function (k) {
+      return api("api/devices?status=" + k).then(function (j) {
+        if (k !== "door") setState(k, j.on);
+        var bad = 0;
+        j.plugs.forEach(function (p) {
+          var ok = !p.error && p.online !== false;
+          total++; if (ok) good++; else bad++;
+          row(tb, [refLabel(k), p.id,
+            p.error ? pill("응답 없음", "bad") : p.online === false ? pill("오프라인", "bad") : pill("연결됨", "ok"),
+            p.on == null ? "—" : p.on ? "켜짐" : "꺼짐", p.error || ""], ok ? "" : "bad");
+        });
+        if (bad) throw new Error();
+      }, function (err) { row(tb, [refLabel(k), "—", pill("실패", "bad"), "—", err.message]); throw err; });
+    }, function (fails) {
+      return fails ? "연결 테스트: 플러그 " + total + "개 중 " + good + "개 정상. 빨간 줄을 확인하세요." : "연결 테스트: 플러그 " + total + "개 모두 정상입니다.";
+    }, true);
   });
 
   // ---------- logs ----------

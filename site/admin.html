@@ -11,9 +11,9 @@
 <link rel="stylesheet" href="styles.css">
 <style>
   /* Admin only. Uses the tokens from styles.css. */
-  :root { --bad: #B4442F; --bad-soft: #F6E4DF; --ok-soft: #E1EFE7; }
-  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bad: #E58A76; --bad-soft: #3A221C; --ok-soft: #1C3328; } }
-  :root[data-theme="dark"] { --bad: #E58A76; --bad-soft: #3A221C; --ok-soft: #1C3328; }
+  :root { --bad: #B4442F; --bad-soft: #F6E4DF; --ok-soft: #E1EFE7; --warn: #8A5A00; --warn-soft: #FBEFD3; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bad: #E58A76; --bad-soft: #3A221C; --ok-soft: #1C3328; --warn: #E8B85C; --warn-soft: #3A2E14; } }
+  :root[data-theme="dark"] { --bad: #E58A76; --bad-soft: #3A221C; --ok-soft: #1C3328; --warn: #E8B85C; --warn-soft: #3A2E14; }
 
   [hidden] { display: none !important; }
   .adm main { min-height: 70vh; }
@@ -52,11 +52,14 @@
   .pill { font-size: 0.78rem; padding: 2px 8px; border-radius: 999px; background: var(--soft); white-space: nowrap; display: inline-block; }
   .pill.ok { background: var(--ok-soft); color: var(--pine); }
   .pill.bad { background: var(--bad-soft); color: var(--bad); }
+  .pill.warn { background: var(--warn-soft); color: var(--warn); }
+  .pay-cell { display: inline-flex; align-items: center; gap: 6px; }
   .small-btn { background: none; border: 1.5px solid var(--line); color: var(--ink); border-radius: 999px; padding: 4px 12px; font: 500 0.85rem var(--font-body); cursor: pointer; min-height: 32px; white-space: nowrap; }
   .small-btn.danger { border-color: var(--bad); color: var(--bad); }
   .small-btn:disabled { opacity: 0.45; cursor: not-allowed; }
   .cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 20px; }
-  @media (max-width: 760px) { .cols2 { grid-template-columns: 1fr; } .stats { grid-template-columns: 1fr 1fr; } }
+  .stats.five { grid-template-columns: repeat(5, 1fr); }
+  @media (max-width: 760px) { .cols2 { grid-template-columns: 1fr; } .stats, .stats.five { grid-template-columns: 1fr 1fr; } }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 12px; }
   @media (max-width: 480px) { .grid2 { grid-template-columns: 1fr; } }
   .msg { margin-top: 10px; font-weight: 600; min-height: 1.4em; }
@@ -152,11 +155,11 @@
           <div><b id="stCount">0</b><span>예약 건수</span></div>
           <div><b id="stHours">0</b><span>이용 시간</span></div>
           <div><b id="stSales">$0</b><span>매출 (HST 포함)</span></div>
-          <div><b id="stOnline">0</b><span>온라인 결제 건</span></div>
+          <div><b id="stUnpaid">$0</b><span>미결제 (현장에서 받을 금액)</span></div>
         </div>
         <div class="table-wrap">
           <table class="list">
-            <thead><tr><th>시간</th><th>베이</th><th>이름</th><th>전화</th><th>이메일</th><th class="num">금액</th><th>경로</th><th>코드</th><th></th></tr></thead>
+            <thead><tr><th>시간</th><th>베이</th><th>이름</th><th>전화</th><th>이메일</th><th class="num">금액</th><th>경로</th><th>결제</th><th>코드</th><th></th></tr></thead>
             <tbody id="list"></tbody>
           </table>
         </div>
@@ -173,6 +176,9 @@
               <label class="field">금액 (HST 포함)<input id="aTotal" readonly></label>
               <label class="field">이름<input id="aName" required></label>
               <label class="field">전화<input id="aPhone" type="tel" required></label>
+              <label class="field">결제<select id="aPay">
+                <option value="">나중에 현장에서 받음</option><option value="card">카드로 받음</option><option value="cash">현금으로 받음</option><option value="other">기타로 받음</option>
+              </select></label>
             </div>
             <button class="btn" type="submit">예약 추가</button>
             <p class="msg" id="addMsg" role="status"></p>
@@ -180,7 +186,8 @@
           <div class="card">
             <h3>안내</h3>
             <p class="hint">위에서 고른 날짜에 예약이 추가됩니다. 같은 베이·시간에 이미 예약이 있으면 추가되지 않습니다.</p>
-            <p class="hint">금액은 서버의 기본 요금표(pricing.js)로 계산됩니다. 전화·현장 예약은 결제를 따로 받으세요.</p>
+            <p class="hint">금액은 서버의 기본 요금표(pricing.js)로 계산됩니다. 현장 결제는 카드 단말기나 현금으로 받은 뒤, 목록의 결제 칸에서 "결제 받음…"을 골라 기록하세요.</p>
+            <p class="hint">고객이 온라인에서 "Pay at Gutta"를 고르면 결제 없이 예약되고 "미결제"로 표시됩니다. 한 전화번호로는 미결제 예약을 2건까지만 잡을 수 있습니다.</p>
             <p class="hint">취소해도 기록은 남고, 결제 탭과 로그에서 볼 수 있습니다. 온라인 결제 예약을 취소해도 환불은 Stripe에서 따로 해야 합니다.</p>
           </div>
         </div>
@@ -194,21 +201,23 @@
         <div class="bar">
           <label class="hint" style="margin: 0">예약일</label>
           <input type="date" id="pFrom" aria-label="시작일"> – <input type="date" id="pTo" aria-label="종료일">
-          <select id="pSource" aria-label="경로"><option value="">전체 경로</option><option value="online">온라인</option><option value="admin">전화·현장</option></select>
+          <select id="pSource" aria-label="경로"><option value="">전체 경로</option><option value="online">온라인 예약</option><option value="admin">전화·현장</option></select>
+          <select id="pPay" aria-label="결제"><option value="">전체 결제</option><option value="stripe">온라인 결제</option><option value="venue">현장 결제 완료</option><option value="unpaid">미결제</option></select>
           <select id="pStatus" aria-label="상태"><option value="">전체 상태</option><option value="confirmed">확정</option><option value="conflict">시간 겹침</option><option value="canceled">취소</option></select>
           <button class="chip" type="button" id="pLoad">조회</button>
           <button class="chip" type="button" id="pCsv">CSV 내려받기</button>
         </div>
-        <div class="stats">
+        <div class="stats five">
           <div><b id="pTotal">–</b><span>합계 (HST 포함)</span></div>
           <div><b id="pTax">–</b><span>HST</span></div>
           <div><b id="pOnline">–</b><span>온라인 결제</span></div>
-          <div><b id="pAdmin">–</b><span>전화·현장</span></div>
+          <div><b id="pVenue">–</b><span>현장 결제 완료</span></div>
+          <div><b id="pUnpaid">–</b><span>미결제</span></div>
         </div>
-        <p class="hint">합계에는 취소된 예약이 들어가지 않습니다. <span id="pMode"></span></p>
+        <p class="hint">합계에는 취소된 예약은 빠지고, 아직 받지 않은 미결제 금액은 들어갑니다. <span id="pMode"></span></p>
         <div class="table-wrap">
           <table class="list">
-            <thead><tr><th>예약일</th><th>시간</th><th>베이</th><th>고객</th><th class="num">금액</th><th class="num">HST</th><th class="num">합계</th><th>경로</th><th>상태</th><th>코드</th><th>Stripe</th></tr></thead>
+            <thead><tr><th>예약일</th><th>시간</th><th>베이</th><th>고객</th><th class="num">금액</th><th class="num">HST</th><th class="num">합계</th><th>경로</th><th>결제</th><th>상태</th><th>코드</th><th>Stripe</th></tr></thead>
             <tbody id="pList"></tbody>
           </table>
         </div>
@@ -243,7 +252,7 @@
           <ul style="margin: 8px 0 0; padding-left: 20px">
             <li><code>SHELLY_SERVER</code> — Shelly 앱 → 사용자 설정 → Authorization cloud key 화면의 서버 주소</li>
             <li><code>SHELLY_AUTH_KEY</code> — 같은 화면의 키</li>
-            <li><code>SHELLY_DEVICES</code> — 예: <code>{"door":{"id":"장비ID","pulse":3},"bay1":"장비ID","bay2":"장비ID"}</code></li>
+            <li><code>SHELLY_DEVICES</code> — 예: <code>{"door":{"id":"장비ID","pulse":3},"bay1":["플러그ID","플러그ID"],"bay2":"장비ID"}</code> (베이에 플러그가 여러 개면 목록으로)</li>
           </ul>
         </div>
         <div class="card door" style="margin-bottom: 24px">
@@ -256,10 +265,19 @@
             <button class="small-btn" type="button" id="allOn">전체 켜기</button>
             <button class="small-btn danger" type="button" id="allOff">전체 끄기</button>
             <button class="small-btn" type="button" id="allStatus">상태 확인</button>
+            <button class="small-btn" type="button" id="devTest">연결 테스트</button>
           </div>
         </div>
         <div class="bays" id="bays"></div>
         <p class="msg" id="devMsg" role="status"></p>
+        <div id="devTestWrap" hidden>
+          <h3 style="margin-top: 20px; margin-bottom: 4px">연결 테스트 결과</h3>
+          <p class="hint">플러그를 켜거나 끄지 않고 상태만 읽습니다. 손님이 쓰는 중에도 해도 됩니다.</p>
+          <div class="table-wrap"><table class="list" style="min-width: 0">
+            <thead><tr><th>장비</th><th>플러그 ID</th><th>연결</th><th>전원</th><th>오류</th></tr></thead>
+            <tbody id="devTestList"></tbody>
+          </table></div>
+        </div>
         <h3 style="margin-top: 28px">최근 도어·시스템 기록</h3>
         <div class="table-wrap"><table class="list" style="min-width: 0"><tbody id="devLogs"></tbody></table></div>
       </div>

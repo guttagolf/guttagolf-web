@@ -250,11 +250,11 @@
       $("sSub").textContent = GG.money(c.subtotal / 100); $("sTax").textContent = GG.money(c.tax / 100); $("sTotal").textContent = GG.money(c.total / 100);
       $("barWhat").textContent = "Bay " + state.bay + " · " + GG.lenLabel(len);
       $("barWhen").textContent = when; $("barTotal").textContent = GG.money(c.total / 100);
-      $("go").textContent = "Pay " + GG.money(c.total / 100) + " and book";
+      $("go").textContent = payLater() ? "Book, pay " + GG.money(c.total / 100) + " at Gutta" : "Pay " + GG.money(c.total / 100) + " and book";
     } else {
       ["sTime", "sLen", "sBay", "sSub", "sTax"].forEach(function (id) { $(id).textContent = "—"; });
       $("sTotal").textContent = "$0.00";
-      $("go").textContent = "Pay and book";
+      $("go").textContent = payLater() ? "Book and pay at Gutta" : "Pay and book";
     }
     $("ttBar").hidden = !on;
     updateGo();
@@ -271,11 +271,22 @@
 
   function payMsg(text) { var m = $("payMsg"); m.textContent = text || ""; m.hidden = !text; }
 
-  // Pay: the server prices the booking and sends back a Stripe Checkout page to go to.
+  // Pay now (Stripe) or pay at Gutta (booked straight away, paid on arrival)
+  function payLater() { return document.querySelector("input[name=pay]:checked").value === "venue"; }
+  var FINE = {
+    now: "You pay on Stripe's secure page: card, Apple Pay or Google Pay. We never see your card number.",
+    venue: "Your bay is held now. Pay by card or cash when you arrive. Can't make it? Call or text us so we can free the bay."
+  };
+  document.querySelectorAll("input[name=pay]").forEach(function (r) {
+    r.addEventListener("change", function () { $("payFine").textContent = FINE[r.value]; payMsg(""); summary(); });
+  });
+
+  // Book: the server prices the booking, then either sends back a Stripe Checkout page or saves it to pay at Gutta.
   $("go").addEventListener("click", function () {
+    var later = payLater();
     paying = true; updateGo(); payMsg("");
-    $("go").textContent = "Opening secure payment…";
-    fetch("api/checkout", {
+    $("go").textContent = later ? "Booking…" : "Opening secure payment…";
+    fetch(later ? "api/reserve" : "api/checkout", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         date: GG.dayKey(GG.dateFor(state.day)), bay: state.bay, start: state.start, len: state.end - state.start,
@@ -284,17 +295,18 @@
     }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (j) {
         if (r.ok && j.url) { location.href = j.url; return; }
+        if (r.ok && j.code) { paying = false; clearSel(); paint(); showConfirm(j, true); refresh(); return; }
         if (j.code === "taken") refresh();
-        throw new Error(j.error || "We could not open the payment page. Please try again, or call or text us.");
+        throw new Error(j.error || (later ? "We could not save your booking." : "We could not open the payment page.") + " Please try again, or call or text us.");
       });
     }).catch(function (err) {
       paying = false; summary();
-      payMsg(err.message && !/fetch|network/i.test(err.message) ? err.message : "We could not reach the payment service. Check your connection and try again.");
+      payMsg(err.message && !/fetch|network/i.test(err.message) ? err.message : "We could not reach the booking service. Check your connection and try again.");
     });
   });
 
-  // Back from Stripe: ?paid=<session id> shows the confirmation, ?canceled=1 says nothing was charged.
-  function showConfirm(b) {
+  // Confirmation after a pay-at-Gutta booking, or back from Stripe: ?paid=<session id>; ?canceled=1 says nothing was charged.
+  function showConfirm(b, later) {
     var box = $("confirm");
     box.className = "confirm"; box.hidden = false; box.innerHTML = "";
     var h = document.createElement("h3"); h.textContent = "You're booked";
@@ -302,7 +314,8 @@
     var d = GG.parseDay ? GG.parseDay(b.date) : null;
     var p = document.createElement("p");
     p.textContent = (d ? d.toLocaleDateString("en-CA", GG.fmtDay) : b.date) + ", " + GG.slotLabel(b.start) + " – " + GG.slotLabel(b.start + b.len) +
-      ", Bay " + b.bay + ". Paid " + GG.money(b.total) + (b.email ? ". Your receipt is on its way to " + b.email + "." : ".");
+      ", Bay " + b.bay + (later ? ". Pay " + GG.money(b.total) + " at Gutta when you arrive, by card or cash. Can't make it? Call or text us." :
+      ". Paid " + GG.money(b.total) + (b.email ? ". Your receipt is on its way to " + b.email + "." : "."));
     box.append(h, c, p);
     box.scrollIntoView({ block: "center" });
   }

@@ -9,7 +9,7 @@ async function saveBooking(s, b) {
   if (found.length) return found[0].status;
   const m = s.metadata || {};
   const row = {
-    ...b, source: "online", stripeSessionId: s.id, stripePaymentIntent: typeof s.payment_intent === "string" ? s.payment_intent : null,
+    ...b, source: "online", payMethod: "stripe", stripeSessionId: s.id, stripePaymentIntent: typeof s.payment_intent === "string" ? s.payment_intent : null,
     amounts: { subtotal: +m.subtotal, tax: +m.tax, total: s.amount_total }
   };
   const detail = { date: b.date, bay: b.bay, start: b.start, len: b.len, name: b.name, phone: b.phone, email: b.email, total: s.amount_total / 100, session: s.id };

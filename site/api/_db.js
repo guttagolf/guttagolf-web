@@ -46,7 +46,8 @@ async function isFree(date, bay, start, len) {
   return (await takenOn(date)).every((b) => b.bay !== bay || b.start + b.len <= start || start + len <= b.start);
 }
 
-// Inserts a booking. booking: { code, date, bay, start, len, name, phone, email, amounts, source, stripeSessionId, status }
+// Inserts a booking. booking: { code, date, bay, start, len, name, phone, email, amounts, source, stripeSessionId, status, payMethod }
+// payMethod (stripe, card, cash, other) means it is paid now; without it the booking is paid at Gutta later.
 async function addBooking(b) {
   const customer_id = await saveCustomer(b);
   const rows = await rest("bookings", {
@@ -55,10 +56,22 @@ async function addBooking(b) {
       code: b.code, customer_id, date: b.date, bay: b.bay, start_slot: b.start, len: b.len,
       subtotal_cents: b.amounts.subtotal, tax_cents: b.amounts.tax, total_cents: b.amounts.total,
       source: b.source, status: b.status || "confirmed", stripe_session_id: b.stripeSessionId || null,
-      stripe_payment_intent: b.stripePaymentIntent || null
+      stripe_payment_intent: b.stripePaymentIntent || null,
+      pay_method: b.payMethod || null, paid_at: b.payMethod ? new Date().toISOString() : null
     }
   });
   return rows[0];
+}
+
+function newCode() { return "GG-" + require("crypto").randomBytes(4).toString("hex").slice(0, 5).toUpperCase(); }
+
+// Inserts a booking under a new GG- code, trying another code if that one is already used. An overlap still throws (23P01).
+async function addWithCode(b) {
+  for (let i = 0; i < 3; i++) {
+    try { return await addBooking({ ...b, code: newCode() }); }
+    catch (err) { if (err.code !== "23505") throw err; }
+  }
+  throw new Error("Could not make a unique booking code.");
 }
 
 // Writes one line to the logs table. Never throws: a failed log must not break the request it records.
@@ -76,4 +89,4 @@ async function log(category, entry) {
   } catch (err) { console.error("Log write failed:", category, e.action, err.message); }
 }
 
-module.exports = { configured, rest, saveCustomer, takenOn, isFree, addBooking, log };
+module.exports = { configured, rest, saveCustomer, takenOn, isFree, addBooking, addWithCode, log };

@@ -16,6 +16,8 @@ const VERSION = 2;             // bump when the prompt or tools change, so the a
 
 function configured() { return !!process.env.ELEVENLABS_API_KEY; }
 function llm() { return /^[\w.-]{2,60}$/.test(process.env.GREEN_LLM || "") ? process.env.GREEN_LLM : "claude-sonnet-5-5"; }
+// A pasted value that is not a voice id (e.g. a whole command line) is ignored, so ElevenLabs uses its default voice.
+function voiceId() { const v = String(process.env.GREEN_VOICE_ID || "").trim(); return /^[A-Za-z0-9]{10,40}$/.test(v) ? v : null; }
 
 // One ElevenLabs REST call. Throws an Error with the status and ElevenLabs' message.
 async function xi(path, opts) {
@@ -245,7 +247,7 @@ function agentBody(toolIds) {
       },
       // Korean is the default; English is the one other language Green understands and speaks.
       language_presets: { en: { overrides: { agent: { language: "en", first_message: "Hi, I'm Green. What would you like me to look into?" } } } },
-      tts: { model_id: "eleven_flash_v2_5", ...(process.env.GREEN_VOICE_ID ? { voice_id: process.env.GREEN_VOICE_ID } : {}) },
+      tts: { model_id: "eleven_flash_v2_5", ...(voiceId() ? { voice_id: voiceId() } : {}) },
       conversation: { max_duration_seconds: 1800 }
     },
     // Only our admin page can start a conversation (signed URL), and it may start one as text only.

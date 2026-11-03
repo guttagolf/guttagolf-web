@@ -27,6 +27,8 @@
   function dayLabel(key) { var d = P.parseDay(key); return d ? d.toLocaleDateString("ko-KR", { month: "short", day: "numeric", weekday: "short" }) : key; }
   function pill(text, kind) { return el("span", text, "pill" + (kind ? " " + kind : "")); }
   var PAYM = { stripe: "온라인 결제", card: "현장 카드", cash: "현장 현금", other: "현장 기타" };
+  var AGE = { under18: "18 미만", "18-24": "18–24", "25-34": "25–34", "35-44": "35–44", "45-54": "45–54", "55-64": "55–64", "65plus": "65+" };
+  var GENDER = { female: "여성", male: "남성", other: "기타", na: "밝히지 않음" };
   function payLabel(b) { return b.payMethod ? PAYM[b.payMethod] : "미결제"; }
   function payPill(b) { return pill(payLabel(b), b.payMethod ? "ok" : "warn"); }
   function srcLabel(b) { return b.source === "admin" ? "전화·현장" : "온라인 예약"; }
@@ -68,7 +70,7 @@
   }
 
   // ---------- log labels ----------
-  var CAT = { auth: "로그인", booking: "예약", payment: "결제", door: "도어", system: "시스템", error: "오류" };
+  var CAT = { auth: "로그인", booking: "예약", payment: "결제", door: "도어", system: "시스템", marketing: "마케팅", error: "오류" };
   var ACT = {
     login: "로그인", login_fail: "로그인 실패", login_blocked: "로그인 차단", logout: "로그아웃",
     booking_add: "예약 추가 (전화·현장)", booking_cancel: "예약 취소",
@@ -76,7 +78,9 @@
     paid_venue: "현장 결제 받음", paid_venue_undo: "현장 결제 되돌림",
     checkout_start: "결제 페이지 열림", paid: "온라인 결제 완료", paid_conflict: "결제됐지만 시간 겹침",
     door_open: "문 열기", power_on: "전원 켜기", power_off: "전원 끄기",
-    admin_api: "관리자 API 오류", booking_save: "예약 저장 실패", checkout: "결제 페이지 오류"
+    admin_api: "관리자 API 오류", booking_save: "예약 저장 실패", checkout: "결제 페이지 오류",
+    green_draft: "그린 초안 작성", campaign_delete: "캠페인 초안 삭제", sms_test: "테스트 문자", sms_send: "문자 발송",
+    popup_publish: "팝업 게시", campaign_end: "캠페인 종료", sms_opt_out: "문자 수신 거부", sms_opt_in: "문자 수신 재동의", green_api: "그린 API 오류"
   };
   function refLabel(r) { var m = /^bay(\d)$/.exec(r || ""); return m ? "Bay " + m[1] : r === "door" ? "정문" : r; }
   function detailText(d) {
@@ -244,8 +248,9 @@
     if (sel < GG.today) return say("addMsg", "지난 날짜에는 예약을 추가할 수 없습니다.");
     if (start + len > P.SLOTS) return say("addMsg", "영업 종료 시간을 넘습니다. 시작 시간이나 이용 시간을 줄여 주세요.");
     var btn = e.submitter || this.querySelector("button"); btn.disabled = true;
-    api("api/admin", { method: "POST", body: { date: P.dayKey(sel), bay: +$("aBay").value, start: start, len: len, name: $("aName").value.trim(), phone: $("aPhone").value.trim(), pay: $("aPay").value || null } })
-      .then(function (j) { $("aName").value = ""; $("aPhone").value = ""; $("aPay").value = ""; say("addMsg", "예약을 추가했습니다 (" + j.code + ").", true); loaders.bookings(); })
+    api("api/admin", { method: "POST", body: { date: P.dayKey(sel), bay: +$("aBay").value, start: start, len: len, name: $("aName").value.trim(), phone: $("aPhone").value.trim(), pay: $("aPay").value || null,
+      postal: $("aPostal").value.trim(), age: $("aAge").value, gender: $("aGender").value, smsOk: $("aSms").checked } })
+      .then(function (j) { ["aName", "aPhone", "aPay", "aPostal", "aAge", "aGender"].forEach(function (id) { $(id).value = ""; }); $("aSms").checked = false; say("addMsg", "예약을 추가했습니다 (" + j.code + ").", true); loaders.bookings(); })
       .catch(function (err) { say("addMsg", err.message); })
       .then(function () { btn.disabled = false; });
   });
@@ -304,21 +309,21 @@
   // ---------- customers ----------
   var custRows = [];
   loaders.customers = function () {
-    empty($("cList"), 7, "불러오는 중…");
+    empty($("cList"), 11, "불러오는 중…");
     api("api/admin?view=customers&q=" + encodeURIComponent($("cQ").value.trim())).then(function (j) {
       custRows = j.customers;
       var tb = $("cList"); tb.innerHTML = "";
       custRows.forEach(function (c) {
-        row(tb, [c.name, [c.phone, "mono"], c.email, [c.count, "num mono"], [GG.money(c.spent), "num mono"], c.last ? dayLabel(c.last) : "—", stamp(c.created).slice(0, 6)]);
+        row(tb, [c.name, [c.phone, "mono"], c.email, [c.postal, "mono"], AGE[c.age], GENDER[c.gender], c.smsOk ? pill("동의", "ok") : "—", [c.count, "num mono"], [GG.money(c.spent), "num mono"], c.last ? dayLabel(c.last) : "—", stamp(c.created).slice(0, 6)]);
       });
-      if (!custRows.length) empty(tb, 7, "고객이 없습니다.");
+      if (!custRows.length) empty(tb, 11, "고객이 없습니다.");
       $("cCount").textContent = custRows.length + "명" + (custRows.length >= 300 ? " (최근 300명까지 표시 — 검색으로 좁히세요)" : "");
-    }).catch(function (err) { empty($("cList"), 7, err.message); });
+    }).catch(function (err) { empty($("cList"), 11, err.message); });
   };
   $("cForm").addEventListener("submit", function (e) { e.preventDefault(); loaders.customers(); });
   $("cCsv").addEventListener("click", function () {
-    var rows = [["이름", "전화", "이메일", "예약 수", "총 결제", "최근 예약일", "첫 방문"]];
-    custRows.forEach(function (c) { rows.push([c.name, c.phone, c.email, c.count, c.spent.toFixed(2), c.last, c.created]); });
+    var rows = [["이름", "전화", "이메일", "우편번호", "연령대", "성별", "문자 동의", "예약 수", "총 결제", "최근 예약일", "첫 방문"]];
+    custRows.forEach(function (c) { rows.push([c.name, c.phone, c.email, c.postal, AGE[c.age], GENDER[c.gender], c.smsOk ? "Y" : "", c.count, c.spent.toFixed(2), c.last, c.created]); });
     download("gutta-customers.csv", csv(rows), "text/csv;charset=utf-8");
   });
 
@@ -509,6 +514,9 @@
     say("dataMsg", "기본값으로 되돌렸습니다.", true);
   });
   fillForms();
+
+  // Shared with admin-green.js (the Green tab).
+  window.GGA = { api: api, loaders: loaders, el: el, say: say, stamp: stamp, pill: pill, download: download, empty: empty, dayLabel: dayLabel };
 
   // ---------- start ----------
   api("api/login").then(showApp).catch(function (err) {

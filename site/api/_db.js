@@ -23,12 +23,17 @@ async function rest(path, opts) {
   return data;
 }
 
-// Creates the customer, or updates the name (and email when given) of the one with the same phone digits.
+// Creates the customer, or updates the name (and email, postal code, age band, gender when given) of the one with the same phone digits.
+// smsOk true records consent to marketing texts; leaving it out never takes an earlier consent away.
 // Without a phone number (a walk-in) it always creates a new customer.
-async function saveCustomer({ name, phone, email }) {
+async function saveCustomer({ name, phone, email, postal, age, gender, smsOk }) {
   const digits = String(phone || "").replace(/\D/g, "");
   const row = { name, phone: phone || null, phone_key: digits || null, updated_at: new Date().toISOString() };
   if (email) row.email = email;
+  if (postal) row.postal_code = postal;
+  if (age) row.age_band = age;
+  if (gender) row.gender = gender;
+  if (smsOk && digits) { row.sms_opt_in = true; row.sms_opt_in_at = row.updated_at; row.sms_opt_out_at = null; }
   if (!digits) return (await rest("customers", { method: "POST", body: row }))[0].id;
   const rows = await rest("customers?on_conflict=phone_key", {
     method: "POST", body: row, prefer: "resolution=merge-duplicates,return=representation"
@@ -46,7 +51,8 @@ async function isFree(date, bay, start, len) {
   return (await takenOn(date)).every((b) => b.bay !== bay || b.start + b.len <= start || start + len <= b.start);
 }
 
-// Inserts a booking. booking: { code, date, bay, start, len, name, phone, email, amounts, source, stripeSessionId, status, payMethod }
+// Inserts a booking. booking: { code, date, bay, start, len, name, phone, email, postal, age, gender, smsOk, amounts, source,
+//   stripeSessionId, status, payMethod, promo, ref }   (amounts.discount is what a promo code took off the subtotal)
 // payMethod (stripe, card, cash, other) means it is paid now; without it the booking is paid at Gutta later.
 async function addBooking(b) {
   const customer_id = await saveCustomer(b);
@@ -57,7 +63,10 @@ async function addBooking(b) {
       subtotal_cents: b.amounts.subtotal, tax_cents: b.amounts.tax, total_cents: b.amounts.total,
       source: b.source, status: b.status || "confirmed", stripe_session_id: b.stripeSessionId || null,
       stripe_payment_intent: b.stripePaymentIntent || null,
-      pay_method: b.payMethod || null, paid_at: b.payMethod ? new Date().toISOString() : null
+      pay_method: b.payMethod || null, paid_at: b.payMethod ? new Date().toISOString() : null,
+      // Only sent when set, so bookings keep working on a database that has not had the marketing columns added yet.
+      ...(b.promo ? { promo_code: b.promo, discount_cents: b.amounts.discount || 0 } : {}),
+      ...(b.ref ? { campaign_ref: b.ref } : {})
     }
   });
   return rows[0];

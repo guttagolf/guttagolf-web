@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Golf Lessons | Gutta Golf</title>
 <meta name="description" content="Indoor golf lessons in North York with Jason and team. Private lessons $100/hr, 10-lesson package $800, group classes by skill level.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="canonical" href="https://guttagolf.ca/lessons.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Gutta Golf">
+<meta property="og:title" content="Golf Lessons | Gutta Golf">
+<meta property="og:description" content="Indoor golf lessons in North York with Jason and team. Private lessons <meta name="description" content="Indoor golf lessons in North York with Jason and team. Private lessons $100/hr, 10-lesson package $800, group classes by skill level.">00/hr, 10-lesson package $800, group classes by skill level.">
+<meta property="og:url" content="https://guttagolf.ca/lessons.html">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -58,7 +65,7 @@
           </label>
           <label for="aMsg">Your goal or question<textarea id="aMsg" placeholder="e.g. I shoot around 105 and want to break 100 this year."></textarea></label>
           <button class="btn" type="submit">Send question</button>
-          <p class="ok" id="askOk" hidden>Test mode: your question was not sent. On the live site it goes to info@guttagolf.ca.</p>
+          <p class="ok" id="askOk" hidden>Your email app should open with your question ready to send. If it doesn't, email <a data-gg-href="mailto" data-gg="email" href="mailto:info@guttagolf.ca">info@guttagolf.ca</a> or call <span data-gg="phone">437-655-4161</span>.</p>
         </form>
       </div>
     </div>
@@ -83,7 +90,14 @@
 <script src="pricing.js"></script>
 <script src="site.js"></script>
 <script>
-document.getElementById("ask").addEventListener("submit", function (e) { e.preventDefault(); document.getElementById("askOk").hidden = false; });
+// The question opens in the visitor's email app, addressed to us (there is no mail server behind this form).
+document.getElementById("ask").addEventListener("submit", function (e) {
+  e.preventDefault();
+  var v = function (id) { return document.getElementById(id).value.trim(); };
+  var body = v("aMsg") + "\n\n" + v("aName") + "\n" + v("aEmail");
+  location.href = "mailto:" + GG.info.email + "?subject=" + encodeURIComponent("Lesson question: " + v("aType")) + "&body=" + encodeURIComponent(body);
+  document.getElementById("askOk").hidden = false;
+});
 </script>
 </body>
 </html>

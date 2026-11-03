@@ -4,13 +4,13 @@
 //   GET    /api/admin?view=payments&from=…&to=…            →  { payments, stripeTest } every booking (any status) in the date range
 //   GET    /api/admin?view=customers&q=…                   →  { customers } with booking count and amount paid
 //   GET    /api/admin?view=logs&from=ISO&to=ISO&category=…&q=…  →  { logs } newest first
-//   POST   /api/admin  { date, bay, start, len, name, phone, pay }  →  phone / walk-in booking, priced by pricing.js (pay: card | cash | other, or none for pay later)
+//   POST   /api/admin  { date, bay, start, len, name, phone, pay, postal?, age?, gender?, smsOk? }  →  phone / walk-in booking, priced by pricing.js (pay: card | cash | other, or none for pay later)
 //   PATCH  /api/admin?code=GG-XXXXX  { pay }               →  marks a pay-at-Gutta booking paid (card | cash | other), or unpaid again (null)
 //   DELETE /api/admin?code=GG-XXXXX                         →  cancels the booking (kept in the table as canceled)
 const P = require("../pricing.js");
 const db = require("./_db.js");
 const auth = require("./_auth.js");
-const { torontoNow } = require("./_booking.js");
+const { torontoNow, checkProfile } = require("./_booking.js");
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const BOOKING_COLS = "code,date,bay,start_slot,len,subtotal_cents,tax_cents,total_cents,source,status,stripe_payment_intent,pay_method,paid_at,created_at,canceled_at,customers(name,phone,email)";
@@ -47,11 +47,12 @@ async function customers(q) {
     if (digits.length >= 3) parts.push(`phone_key.like.*${digits}*`);
     filter = "&or=" + encodeURIComponent("(" + parts.join(",") + ")");
   }
-  const rows = await db.rest(`customers?select=id,name,phone,email,created_at,bookings(date,total_cents,status,paid_at)${filter}&order=updated_at.desc&limit=300`);
+  const rows = await db.rest(`customers?select=*,bookings(date,total_cents,status,paid_at)${filter}&order=updated_at.desc&limit=300`);
   return rows.map((c) => {
     const live = (c.bookings || []).filter((b) => b.status !== "canceled");
     return {
       name: c.name, phone: c.phone, email: c.email, created: c.created_at,
+      postal: c.postal_code || null, age: c.age_band || null, gender: c.gender || null, smsOk: !!c.sms_opt_in,
       count: live.length, spent: live.filter((b) => b.paid_at).reduce((n, b) => n + b.total_cents, 0) / 100,
       last: live.map((b) => b.date).sort().pop() || null
     };
@@ -62,7 +63,7 @@ async function logs(q) {
   let path = "logs?select=*&order=at.desc";
   if (q.from && !isNaN(Date.parse(q.from))) path += "&at=gte." + encodeURIComponent(new Date(q.from).toISOString());
   if (q.to && !isNaN(Date.parse(q.to))) path += "&at=lt." + encodeURIComponent(new Date(q.to).toISOString());
-  if (/^(auth|booking|payment|door|system|error)$/.test(String(q.category || ""))) path += "&category=eq." + q.category;
+  if (/^(auth|booking|payment|door|system|error|marketing)$/.test(String(q.category || ""))) path += "&category=eq." + q.category;
   const s = clean(q.q);
   if (s) path += "&or=" + encodeURIComponent(`(action.ilike.*${s}*,ref.ilike.*${s}*,actor.ilike.*${s}*,ip.ilike.*${s}*)`);
   path += "&limit=" + Math.min(Math.max(+q.limit || 500, 1), 2000);
@@ -97,10 +98,12 @@ async function add(body, actor, req) {
   if (!name || phone.replace(/\D/g, "").length < 7) return { status: 400, error: "이름과 전화번호를 입력하세요." };
 
   const pay = PAY.test(String(b.pay || "")) ? b.pay : null;
+  const profile = checkProfile(b);
+  if (profile.error) return { status: 400, error: "우편번호를 확인하세요 (예: M3B 2M3)." };
 
   const amounts = P.cents(P.RATES, day, start, len);
   try {
-    const row = await db.addWithCode({ date: b.date, bay, start, len, name, phone, amounts, source: "admin", payMethod: pay });
+    const row = await db.addWithCode({ date: b.date, bay, start, len, name, phone, ...profile, amounts, source: "admin", payMethod: pay });
     await db.log("booking", { action: "booking_add", actor, ref: row.code, req,
       detail: { date: b.date, bay, time: `${P.slotLabel(start)} – ${P.slotLabel(start + len)}`, name, phone, total: amounts.total / 100, pay } });
     return { status: 200, code: row.code };

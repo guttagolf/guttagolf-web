@@ -1,0 +1,5 @@
+{
+  "rewrites": [{ "source": "/robots.txt", "destination": "/api/robots" }],
+  "headers": [{ "source": "/admin.html", "headers": [{ "key": "X-Robots-Tag", "value": "noindex, nofollow" }] }],
+  "functions": { "api/green.js": { "maxDuration": 60 } }
+}

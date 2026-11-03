@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Book a Bay | Gutta Golf</title>
 <meta name="description" content="Book an indoor golf bay at Gutta Golf, 244 Lesmill Rd, North York. Pick a day, a bay and a start time.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="canonical" href="https://guttagolf.ca/book.html">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Gutta Golf">
+<meta property="og:title" content="Book a Bay | Gutta Golf">
+<meta property="og:description" content="Book an indoor golf bay at Gutta Golf, 244 Lesmill Rd, North York. Pick a day, a bay and a start time.">
+<meta property="og:url" content="https://guttagolf.ca/book.html">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -18,7 +25,7 @@
     <div class="wrap">
       <p class="eyebrow">Book</p>
       <h1>Book a bay</h1>
-      <p class="lead">Book up to 7 days ahead. Members can book up to 10 days ahead. One price per bay for up to 4 players.</p>
+      <p class="lead">Book up to 7 days ahead. One price per bay for up to 4 players. Pay now online, or pay when you arrive.</p>
     </div>
   </section>
 
@@ -57,12 +64,30 @@
             <dt>Time</dt><dd id="sTime" class="mono">—</dd>
             <dt>Length</dt><dd id="sLen">—</dd>
             <dt>Bay</dt><dd id="sBay">—</dd>
+            <dt id="sPromoT" hidden>Promo</dt><dd id="sPromo" class="mono" hidden>—</dd>
             <dt>Subtotal</dt><dd id="sSub" class="mono">—</dd>
             <dt>HST 13%</dt><dd id="sTax" class="mono">—</dd>
           </dl>
           <div class="total"><span>Total</span><strong id="sTotal">$0.00</strong></div>
           <label class="field">Name<input id="cName" autocomplete="name" required></label>
           <label class="field">Phone<input id="cPhone" type="tel" autocomplete="tel" required></label>
+          <p class="about-you-h">About you (optional, helps us plan)</p>
+          <div class="about-you">
+            <label class="field">Postal code<input id="cPostal" autocomplete="postal-code" placeholder="M3B 2M3" maxlength="7"></label>
+            <label class="field">Age<select id="cAge">
+              <option value="">—</option><option value="under18">Under 18</option><option value="18-24">18–24</option><option value="25-34">25–34</option>
+              <option value="35-44">35–44</option><option value="45-54">45–54</option><option value="55-64">55–64</option><option value="65plus">65+</option>
+            </select></label>
+            <label class="field">Gender<select id="cGender">
+              <option value="">—</option><option value="female">Female</option><option value="male">Male</option><option value="other">Another gender</option><option value="na">Prefer not to say</option>
+            </select></label>
+          </div>
+          <div class="promo-row">
+            <label class="field">Promo code<input id="cPromo" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="16"></label>
+            <button class="chip" type="button" id="promoBtn">Apply</button>
+          </div>
+          <p class="promo-msg" id="promoMsg" role="status"></p>
+          <label class="check-line"><input type="checkbox" id="cSms"><span>Text me deals and news from Gutta Golf. Reply STOP anytime to opt out. <a href="privacy.html">Privacy</a></span></label>
           <fieldset class="pay-pick">
             <legend>Payment</legend>
             <label><input type="radio" name="pay" value="now" checked><span><b>Pay now</b><small>Card, Apple Pay or Google Pay</small></span></label>
@@ -89,7 +114,7 @@
       <ul class="rules" style="margin-top: 0">
         <li>Bring your own clubs</li>
         <li>Please don't bring golf balls; the auto tee-up uses ours</li>
-        <li>Cancel at least 24 hours ahead for a refund (4% processing fee)</li>
+        <li>To cancel, call or text us at least 24 hours ahead. Online payments are refunded less a 4% processing fee</li>
         <li>Paying at Gutta? Call or text us if you can't make it, so someone else can play</li>
         <li>Light snacks and non-alcoholic drinks are fine</li>
         <li class="no">No alcohol, smoking or vaping</li>

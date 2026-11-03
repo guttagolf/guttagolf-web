@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <title>Gutta Golf 관리자</title>
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800&family=Instrument+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
@@ -80,6 +82,90 @@
   .bay .row { display: flex; gap: 6px; flex-wrap: wrap; }
   .state { font-size: 0.85rem; color: var(--muted); }
   .state.on { color: var(--pine); font-weight: 600; }
+  .check-line { display: flex; gap: 10px; align-items: flex-start; font-size: 0.9rem; margin: 0 0 14px; cursor: pointer; }
+  .check-line input { width: 18px; height: 18px; margin-top: 2px; flex: none; accent-color: var(--pine); }
+
+  /* Green */
+  .g-top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+  .g-top h2 { margin: 0; display: flex; align-items: center; gap: 10px; }
+  .g-top small { font-family: var(--font-body); font-size: 1rem; font-weight: 500; color: var(--muted); }
+  .g-avatar { flex: none; display: inline-grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--pine); color: var(--pine-ink); font: 800 1.1rem var(--font-display); }
+  .g-layout { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 20px; align-items: start; }
+  @media (max-width: 860px) { .g-layout { grid-template-columns: 1fr; } .g-side { order: 2; } }
+  .g-side h3 { font-size: 1rem; margin: 18px 0 6px; color: var(--muted); }
+  .g-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; max-height: 280px; overflow-y: auto; }
+  .g-list li { display: flex; align-items: center; gap: 4px; border-radius: 8px; }
+  .g-list li.on { background: var(--soft); }
+  .g-list button.open { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 8px 8px; font: 500 0.9rem var(--font-body); color: var(--ink); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 8px; }
+  .g-list button.open:hover { background: var(--soft); }
+  .g-list button.del { flex: none; background: none; border: 0; color: var(--muted); cursor: pointer; padding: 6px 8px; border-radius: 6px; }
+  .g-list button.del:hover { color: var(--bad); }
+  .g-chat { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); display: flex; flex-direction: column; min-height: 480px; max-height: min(78vh, 900px); }
+  .g-log { flex: 1; overflow-y: auto; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+  .g-msg { max-width: 92%; padding: 12px 14px; border-radius: 12px; line-height: 1.55; overflow-wrap: anywhere; }
+  .g-msg.me { align-self: flex-end; background: var(--pine); color: var(--pine-ink); border-bottom-right-radius: 4px; white-space: pre-wrap; }
+  .g-msg.green { align-self: flex-start; background: var(--soft); border-bottom-left-radius: 4px; }
+  .g-msg.wait { color: var(--muted); font-style: italic; }
+  .g-msg.err { background: var(--bad-soft); color: var(--bad); }
+  .g-meta { margin-top: 10px; font-size: 0.8rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px; }
+  .g-actions { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .g-sources { margin-top: 10px; font-size: 0.82rem; }
+  .g-sources summary { cursor: pointer; color: var(--muted); }
+  .g-sources ol { margin: 6px 0 0; padding-left: 20px; }
+  .g-welcome { color: var(--muted); }
+  .g-welcome p { margin: 0 0 12px; }
+  .g-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .g-chips button { background: var(--surface); border: 1.5px solid var(--line); color: var(--ink); border-radius: 999px; padding: 8px 14px; font: 500 0.9rem var(--font-body); cursor: pointer; text-align: left; }
+  .g-chips button:hover { border-color: var(--pine); }
+  .g-input { display: flex; gap: 8px; padding: 12px; border-top: 1px solid var(--line); align-items: flex-end; }
+  .g-input textarea { flex: 1; min-width: 0; resize: none; font: 400 1rem var(--font-body); color: var(--ink); background: var(--bg); border: 1.5px solid var(--line); border-radius: 10px; padding: 10px 12px; max-height: 200px; }
+  .g-input .btn { flex: none; }
+  .g-voice { display: flex; align-items: center; gap: 10px; padding: 0 12px 12px; }
+  .g-voice .small-btn.on { background: var(--bad); border-color: var(--bad); color: #fff; }
+  .g-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+  /* Markdown from Green */
+  .g-md > :first-child { margin-top: 0; }
+  .g-md > :last-child { margin-bottom: 0; }
+  .g-md h1, .g-md h2, .g-md h3, .g-md h4 { font-family: var(--font-body); font-weight: 600; text-transform: none; letter-spacing: 0; line-height: 1.3; margin: 18px 0 8px; }
+  .g-md h1 { font-size: 1.3rem; } .g-md h2 { font-size: 1.15rem; } .g-md h3, .g-md h4 { font-size: 1rem; }
+  .g-md p { margin: 0 0 10px; }
+  .g-md ul, .g-md ol { margin: 0 0 10px; padding-left: 22px; }
+  .g-md li { margin: 3px 0; }
+  .g-md code { font-family: var(--font-mono); font-size: 0.88em; background: var(--surface); padding: 1px 5px; border-radius: 4px; }
+  .g-md pre { background: var(--surface); padding: 10px 12px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; }
+  .g-md blockquote { margin: 0 0 10px; padding-left: 12px; border-left: 3px solid var(--ball); color: var(--muted); }
+  .g-md hr { border: 0; border-top: 1px solid var(--line); margin: 14px 0; }
+  .g-md .tw { overflow-x: auto; margin: 0 0 12px; }
+  .g-md table { border-collapse: collapse; font-size: 0.88rem; background: var(--surface); }
+  .g-md th, .g-md td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+  .g-md th { font-weight: 600; background: var(--bg); }
+
+  /* Campaign cards */
+  .g-camps { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); gap: 14px; }
+  .g-camp { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .g-camp.draft { border-style: dashed; border-color: var(--ball); }
+  .g-camp-head { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .g-camp-head b { flex: 1 1 100%; font-size: 1.02rem; }
+  .g-camp textarea, .g-camp input { font: 400 0.95rem var(--font-body); color: var(--ink); background: var(--bg); border: 1.5px solid var(--line); border-radius: 8px; padding: 8px 10px; width: 100%; min-width: 0; }
+  .g-camp textarea { min-height: 96px; resize: vertical; }
+  .g-camp label { display: grid; gap: 3px; font-size: 0.82rem; color: var(--muted); }
+  .g-camp .preview { white-space: pre-wrap; font-size: 0.9rem; background: var(--soft); border-radius: 8px; padding: 10px 12px; overflow-wrap: anywhere; }
+  .g-camp .nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .g-camp .nums div { background: var(--soft); border-radius: 8px; padding: 8px; min-width: 0; }
+  .g-camp .nums b { display: block; font-family: var(--font-display); font-size: 1.35rem; line-height: 1.1; }
+  .g-camp .nums span { font-size: 0.75rem; color: var(--muted); }
+  .g-camp .row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .g-camp .msg { margin: 0; min-height: 0; font-size: 0.88rem; }
+
+  .g-dialog { width: min(860px, calc(100vw - 32px)); max-height: calc(100vh - 48px); padding: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); color: var(--ink); }
+  .g-dialog::backdrop { background: rgba(10, 18, 15, 0.55); }
+  .g-dialog-bar { position: sticky; top: 0; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; padding: 12px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .g-dialog .g-md { padding: 18px 20px 24px; }
+
+  .g-fab { position: fixed; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 60; display: inline-flex; align-items: center; gap: 8px; padding: 6px 16px 6px 6px; border-radius: 999px; background: var(--pine); color: var(--pine-ink); text-decoration: none; font-weight: 600; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); }
+  .g-fab .g-avatar { background: var(--ball); color: #14211B; }
+  .g-fab:hover { filter: brightness(1.08); }
 </style>
 </head>
 <body data-page="admin" class="adm">
@@ -106,7 +192,7 @@
   </div></header>
   <nav class="tabs" aria-label="관리자 메뉴"><div class="wrap" style="display: flex; gap: 4px">
     <a href="#dashboard">대시보드</a><a href="#bookings">예약</a><a href="#payments">결제</a><a href="#customers">고객</a>
-    <a href="#devices">도어·시스템</a><a href="#logs">로그</a><a href="#settings">사이트 설정</a>
+    <a href="#green">그린</a><a href="#devices">도어·시스템</a><a href="#logs">로그</a><a href="#settings">사이트 설정</a>
   </div></nav>
 
   <main>
@@ -179,7 +265,15 @@
               <label class="field">결제<select id="aPay">
                 <option value="">나중에 현장에서 받음</option><option value="card">카드로 받음</option><option value="cash">현금으로 받음</option><option value="other">기타로 받음</option>
               </select></label>
+              <label class="field">우편번호 (선택)<input id="aPostal" placeholder="M3B 2M3" autocomplete="off"></label>
+              <label class="field">연령대 (선택)<select id="aAge">
+                <option value="">—</option><option value="under18">18세 미만</option><option value="18-24">18–24</option><option value="25-34">25–34</option><option value="35-44">35–44</option><option value="45-54">45–54</option><option value="55-64">55–64</option><option value="65plus">65+</option>
+              </select></label>
+              <label class="field">성별 (선택)<select id="aGender">
+                <option value="">—</option><option value="female">여성</option><option value="male">남성</option><option value="other">기타</option><option value="na">밝히지 않음</option>
+              </select></label>
             </div>
+            <label class="check-line"><input type="checkbox" id="aSms"> 손님이 할인·소식 문자 수신에 동의함 (직접 물어본 경우만)</label>
             <button class="btn" type="submit">예약 추가</button>
             <p class="msg" id="addMsg" role="status"></p>
           </form>
@@ -236,12 +330,61 @@
         <p class="hint" id="cCount"></p>
         <div class="table-wrap">
           <table class="list">
-            <thead><tr><th>이름</th><th>전화</th><th>이메일</th><th class="num">예약 수</th><th class="num">총 결제</th><th>최근 예약일</th><th>첫 방문</th></tr></thead>
+            <thead><tr><th>이름</th><th>전화</th><th>이메일</th><th>지역</th><th>연령</th><th>성별</th><th>문자 동의</th><th class="num">예약 수</th><th class="num">총 결제</th><th>최근 예약일</th><th>첫 방문</th></tr></thead>
             <tbody id="cList"></tbody>
           </table>
         </div>
       </div>
     </section>
+
+    <!-- Green: marketing assistant (admin-green.js, api/green.js) -->
+    <section id="green" data-tab>
+      <div class="wrap">
+        <div class="g-top">
+          <h2><span class="g-avatar" aria-hidden="true">G</span>그린 <small>마케팅 비서</small></h2>
+          <span class="g-status"><span class="hint" id="gStatus" style="margin: 0"></span><button class="small-btn" type="button" id="gSetupBtn" hidden>그린 만들기</button></span>
+        </div>
+        <div class="setup" id="gSetup" hidden></div>
+        <div class="g-layout">
+          <aside class="g-side">
+            <button class="btn" type="button" id="gNew" style="width: 100%">+ 새 대화</button>
+            <h3>대화</h3>
+            <ul class="g-list" id="gChats"></ul>
+            <h3>리포트</h3>
+            <ul class="g-list" id="gReports"></ul>
+          </aside>
+          <div class="g-main">
+            <div class="g-chat">
+              <div class="g-log" id="gLog" aria-live="polite"></div>
+              <form class="g-input" id="gForm">
+                <textarea id="gMsg" rows="2" placeholder="그린에게 물어보세요. 예: 이번 달 평일 오전이 왜 비는지 분석하고 프로모션 제안해줘" aria-label="그린에게 보낼 메시지"></textarea>
+                <button class="btn" type="submit" id="gSend">보내기</button>
+              </form>
+              <div class="g-voice"><button class="small-btn" type="button" id="gVoice">🎙 음성으로 대화</button><span class="hint" id="gVoiceState" style="margin: 0"></span></div>
+            </div>
+            <div class="bar" style="justify-content: space-between; margin: 28px 0 12px">
+              <h3 style="margin: 0">캠페인 (문자·팝업)</h3>
+              <button class="small-btn" type="button" id="gCampReload">새로고침</button>
+            </div>
+            <p class="hint">그린이 만든 초안이 여기 쌓입니다. 내용을 고치고, 테스트 문자를 받아 본 뒤 직접 보내거나 게시하세요. 그린은 혼자 보내지 않습니다.</p>
+            <div class="g-camps" id="gCamps"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <dialog class="g-dialog" id="gReport">
+      <div class="g-dialog-bar">
+        <b id="gReportTitle"></b>
+        <span class="ctas">
+          <button class="small-btn" type="button" id="gReportPrint">인쇄·PDF</button>
+          <button class="small-btn" type="button" id="gReportMd">.md 내려받기</button>
+          <button class="small-btn danger" type="button" id="gReportDel">삭제</button>
+          <button class="small-btn" type="button" id="gReportClose">닫기</button>
+        </span>
+      </div>
+      <div class="g-md" id="gReportBody"></div>
+    </dialog>
+    <a class="g-fab" href="#green" id="gFab" aria-label="그린에게 물어보기"><span class="g-avatar" aria-hidden="true">G</span><span>그린</span></a>
 
     <!-- Door and system -->
     <section id="devices" data-tab>
@@ -290,7 +433,7 @@
         <form class="bar" id="lForm">
           <select id="lCat" aria-label="분류">
             <option value="">전체</option><option value="auth">로그인</option><option value="booking">예약</option><option value="payment">결제</option>
-            <option value="door">도어</option><option value="system">시스템</option><option value="error">오류</option>
+            <option value="door">도어</option><option value="system">시스템</option><option value="marketing">마케팅</option><option value="error">오류</option>
           </select>
           <input type="date" id="lFrom" aria-label="시작일"> – <input type="date" id="lTo" aria-label="종료일">
           <input class="grow" id="lQ" type="search" placeholder="동작, 코드, IP 검색" aria-label="로그 검색">
@@ -370,5 +513,6 @@
 <script src="pricing.js"></script>
 <script src="site.js"></script>
 <script src="admin.js"></script>
+<script src="admin-green.js"></script>
 </body>
 </html>

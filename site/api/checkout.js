@@ -1,8 +1,9 @@
-// POST /api/checkout  { date, bay, start, len, name, phone }  →  { url } of a Stripe Checkout page
-// The price is worked out here from pricing.js; the amount the page shows is never trusted.
+// POST /api/checkout  { date, bay, start, len, name, phone, postal?, age?, gender?, smsOk?, promo?, src? }  →  { url } of a Stripe Checkout page
+// The price (and any promo discount) is worked out here from pricing.js and the promos table; the amount the page shows is never trusted.
 const Stripe = require("stripe");
 const { checkBooking } = require("./_booking.js");
 const db = require("./_db.js");
+const promo = require("./_promo.js");
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") { res.setHeader("Allow", "POST"); return res.status(405).json({ error: "Use POST." }); }
@@ -10,11 +11,16 @@ module.exports = async (req, res) => {
 
   const check = checkBooking(req.body);
   if (check.error) return res.status(400).json({ error: check.error });
-  const { booking, amounts, label } = check;
+  const { booking } = check;
+  let { amounts, label } = check, ref = booking.ref;
 
   if (db.configured()) {
     try {
       if (!(await db.isFree(booking.date, booking.bay, booking.start, booking.len))) return res.status(409).json({ error: "Someone just booked that time. Pick another time or bay.", code: "taken" });
+      const pr = await promo.apply(booking, amounts);
+      if (pr.error) return res.status(400).json({ error: pr.error, code: "promo" });
+      amounts = pr.amounts; ref = pr.ref;
+      if (pr.promo) label += ` · ${pr.promo.code} ${pr.promo.percent_off}% off`;
     } catch (err) {
       console.error("Availability check failed:", err.message);
       return res.status(502).json({ error: "We could not check that time. Please try again, or call or text us." });
@@ -27,7 +33,9 @@ module.exports = async (req, res) => {
   // Stripe metadata values must be strings.
   const metadata = {
     date: booking.date, bay: String(booking.bay), start: String(booking.start), len: String(booking.len),
-    name: booking.name, phone: booking.phone, subtotal: String(amounts.subtotal), tax: String(amounts.tax)
+    name: booking.name, phone: booking.phone, subtotal: String(amounts.subtotal), tax: String(amounts.tax),
+    postal: booking.postal || "", age: booking.age || "", gender: booking.gender || "", sms: booking.smsOk ? "1" : "",
+    promo: amounts.discount != null && booking.promo || "", discount: String(amounts.discount || 0), ref: ref || ""
   };
 
   try {

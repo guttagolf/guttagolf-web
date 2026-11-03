@@ -245,7 +245,9 @@
     var on = hasSel(), len = on ? state.end - state.start : 0;
     if (on) {
       // Same rounding as the payment API, so the total here is what the card is charged.
-      var c = GG.cents(state.day, state.start, len), when = GG.slotLabel(state.start) + " – " + GG.slotLabel(state.end);
+      var c = withPromo(GG.cents(state.day, state.start, len)), when = GG.slotLabel(state.start) + " – " + GG.slotLabel(state.end);
+      $("sPromoT").hidden = $("sPromo").hidden = !promo;
+      if (promo) $("sPromo").textContent = "−" + GG.money(c.discount / 100) + " (" + promo.code + ")";
       $("sTime").textContent = when; $("sLen").textContent = GG.lenLabel(len); $("sBay").textContent = "Bay " + state.bay;
       $("sSub").textContent = GG.money(c.subtotal / 100); $("sTax").textContent = GG.money(c.tax / 100); $("sTotal").textContent = GG.money(c.total / 100);
       $("barWhat").textContent = "Bay " + state.bay + " · " + GG.lenLabel(len);
@@ -253,12 +255,41 @@
       $("go").textContent = payLater() ? "Book, pay " + GG.money(c.total / 100) + " at Gutta" : "Pay " + GG.money(c.total / 100) + " and book";
     } else {
       ["sTime", "sLen", "sBay", "sSub", "sTax"].forEach(function (id) { $(id).textContent = "—"; });
+      $("sPromoT").hidden = $("sPromo").hidden = true;
       $("sTotal").textContent = "$0.00";
       $("go").textContent = payLater() ? "Book and pay at Gutta" : "Pay and book";
     }
     $("ttBar").hidden = !on;
     updateGo();
   }
+
+  // Promo code: checked with the server (api/site), taken off the subtotal before HST the same way api/_promo.js does.
+  var promo = null;
+  function withPromo(c) {
+    if (!promo) return c;
+    var discount = Math.round(c.subtotal * promo.percent_off / 100), sub = c.subtotal - discount, tax = Math.round(sub * GG.TAX);
+    return { subtotal: sub, tax: tax, total: sub + tax, discount: discount };
+  }
+  function promoMsg(text, ok) { var m = $("promoMsg"); m.textContent = text || ""; m.className = "promo-msg" + (text ? ok ? " ok" : " bad" : ""); }
+  function checkPromo() {
+    var code = $("cPromo").value.trim().toUpperCase();
+    $("cPromo").value = code;
+    if (!code) { promo = null; GG.setPromo(""); promoMsg(""); summary(); return; }
+    promoMsg("Checking…", true);
+    fetch("api/site?do=promo&code=" + encodeURIComponent(code)).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (r.ok && j.code) {
+          promo = j; GG.setPromo(j.code);
+          promoMsg(j.percent_off + "% off applied" + (j.ends_on ? ", until " + GG.parseDay(j.ends_on).toLocaleDateString("en-CA", { month: "short", day: "numeric" }) : "") + ".", true);
+        } else { promo = null; GG.setPromo(""); promoMsg(j.error || "That code didn't work."); }
+        summary();
+      });
+    }).catch(function () { promo = null; promoMsg("We could not check that code just now."); summary(); });
+  }
+  $("promoBtn").addEventListener("click", checkPromo);
+  $("cPromo").addEventListener("keydown", function (e) { if (e.key === "Enter") { e.preventDefault(); checkPromo(); } });
+  $("cPromo").addEventListener("input", function () { if (promo && $("cPromo").value.trim().toUpperCase() !== promo.code) { promo = null; promoMsg(""); summary(); } });
+  if (GG.campaign().promo) { $("cPromo").value = GG.campaign().promo; checkPromo(); }
 
   var paying = false;
   function updateGo() {
@@ -285,18 +316,22 @@
   $("go").addEventListener("click", function () {
     var later = payLater();
     paying = true; updateGo(); payMsg("");
+    GG.track("book_start");
     $("go").textContent = later ? "Booking…" : "Opening secure payment…";
     fetch(later ? "api/reserve" : "api/checkout", {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         date: GG.dayKey(GG.dateFor(state.day)), bay: state.bay, start: state.start, len: state.end - state.start,
-        name: $("cName").value.trim(), phone: $("cPhone").value.trim()
+        name: $("cName").value.trim(), phone: $("cPhone").value.trim(),
+        postal: $("cPostal").value.trim(), age: $("cAge").value, gender: $("cGender").value, smsOk: $("cSms").checked,
+        promo: promo ? promo.code : "", src: GG.campaign().src
       })
     }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (j) {
         if (r.ok && j.url) { location.href = j.url; return; }
-        if (r.ok && j.code) { paying = false; clearSel(); paint(); showConfirm(j, true); refresh(); return; }
+        if (r.ok && j.code) { paying = false; clearSel(); paint(); showConfirm(j, true); GG.track("booked"); refresh(); return; }
         if (j.code === "taken") refresh();
+        if (j.code === "promo") { promo = null; promoMsg(j.error); }
         throw new Error(j.error || (later ? "We could not save your booking." : "We could not open the payment page.") + " Please try again, or call or text us.");
       });
     }).catch(function (err) {
@@ -325,6 +360,7 @@
       if (!b.paid) { payMsg("We could not confirm that payment. If your card was charged, call or text us with the time you booked."); return; }
       if (b.status === "conflict") { payMsg("Your payment went through, but someone booked that time a moment before you. We will call or text " + b.phone + " to move your booking or refund you. Your reference is " + b.code + "."); refresh(); return; }
       showConfirm(b);
+      GG.track("booked");
       if (b.status === "unsaved") payMsg("Your payment went through, but we could not save the booking just now. Please call or text us with reference " + b.code + ".");
       refresh();
     }).catch(function () { payMsg("We could not check your payment just now. Refresh this page in a moment."); });

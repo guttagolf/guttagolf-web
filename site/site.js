@@ -2,7 +2,7 @@
    0. Saved settings. admin.html edits them; in the test version they live in this browser only (bookings are in Supabase).
    1. Business facts (defaults here; admin.html can override them).
    2. Header and footer, drawn into #gg-header and #gg-footer.
-   3. Sample bay availability for the test version (used by the home board and the booking page). */
+   3. Bay availability from the database (sample bookings only in a local preview). */
 (function () {
   var GG = window.GG = {};
 
@@ -33,6 +33,7 @@
   GG.rates = Object.assign({}, GG.defaults.rates, saved.rates && saved.rates.summer && saved.rates.summer.late != null ? saved.rates : {});
   GG.notice = saved.notice || "";
   GG.info.maps = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(GG.info.address1 + " " + GG.info.address2);
+  GG.info.mailto = "mailto:" + GG.info.email;
 
   // 2. Header and footer
   var NAV = [
@@ -87,7 +88,7 @@
             '<a href="book.html">Book a bay</a><a href="rates.html">Rates</a><a href="lessons.html">Lessons</a><a href="how-it-works.html">How it works</a>' +
           "</div>" +
           "<div><h3>Help</h3>" +
-            '<a href="faq.html">FAQ</a><a href="about.html">About us</a><a href="about.html#contact">Contact</a>' +
+            '<a href="faq.html">FAQ</a><a href="about.html">About us</a><a href="about.html#contact">Contact</a><a href="privacy.html">Privacy &amp; booking terms</a>' +
           "</div>" +
           "<div><h3>Contact</h3>" +
             '<span class="mono">' + i.phone + "</span>" +
@@ -145,7 +146,8 @@
   GG.fmtDay = { weekday: "short", month: "short", day: "numeric" };
 
   // Real bookings from the Supabase database (api/availability), per day: { "YYYY-MM-DD": [{ bay, start, len }] }.
-  // Until a day loads, or when the API is not reachable (local preview), that day shows sample bookings instead.
+  // Until a day loads it shows as free; a local preview with no API shows sample bookings instead.
+  var preview = location.protocol === "file:" || /^(localhost|127\.0\.0\.1)$/.test(location.hostname);
   var remote = {};
   GG.loadDay = function (dayIdx) {
     var day = GG.dayKey(GG.dateFor(dayIdx));
@@ -170,8 +172,8 @@
   }
   GG.taken = function (dayIdx, bay) {
     var d = GG.dateFor(dayIdx), key = d.toDateString() + bay, day = GG.dayKey(d);
-    if (!remote[day]) return (cache[key] || (cache[key] = sample(d, bay))).slice();
     var arr = new Array(GG.SLOTS).fill(false);
+    if (!remote[day]) return preview ? (cache[key] || (cache[key] = sample(d, bay))).slice() : arr;
     remote[day].forEach(function (b) { if (b.bay === bay) arr.fill(true, b.start, b.start + b.len); });
     return arr;
   };
@@ -211,7 +213,7 @@
       li.append(bb, sp); ol.appendChild(li);
     }
   };
-  GG.renderBoard();
+  if (preview) GG.renderBoard();
   if (document.getElementById("board")) GG.loadDay(0).then(function (ok) { if (ok) GG.renderBoard(); });
 
   // 4. Rate tables drawn from GG.rates: <ul data-gg-rates="now"> (home) and <tbody data-gg-rates="winter|summer"> (rates page)
@@ -258,4 +260,85 @@
     });
   };
   GG.renderRates();
+
+  // 5. Marketing: visit tracking and the website popup (api/site). Sends no names, contact details or IP addresses.
+  //    ?src= (campaign ref) and ?promo= from a text or popup link are kept for this tab, so the booking is credited to them.
+  function store(local, k, v) {
+    try { var s = local ? localStorage : sessionStorage; if (v === undefined) return s.getItem(k); s.setItem(k, v); } catch (e) { return null; }
+  }
+  function rid() { return Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
+  var qs = new URLSearchParams(location.search);
+  var qSrc = (qs.get("src") || qs.get("utm_source") || "").toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 40);
+  var qPromo = (qs.get("promo") || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
+  if (qSrc) store(false, "gg.src", qSrc);
+  if (qPromo) store(false, "gg.promo", qPromo);
+  GG.campaign = function () { return { src: store(false, "gg.src") || "", promo: store(false, "gg.promo") || "" }; };
+  GG.setPromo = function (code) { store(false, "gg.promo", code || ""); };
+
+  var sid = store(false, "gg.sid") || rid(), vid = store(true, "gg.vid") || rid();
+  store(false, "gg.sid", sid); store(true, "gg.vid", vid);
+  var refHost = "";
+  try { var rh = document.referrer ? new URL(document.referrer).hostname : ""; if (rh && rh !== location.hostname) refHost = rh.replace(/^www\./, ""); } catch (e) {}
+  var device = /Mobi|Android/i.test(navigator.userAgent) || matchMedia("(max-width: 760px)").matches ? "mobile" : "desktop";
+  var tracking = !preview && page !== "admin";
+
+  // type: view | popup_view | popup_click | popup_close | book_start | booked
+  GG.track = function (type, extra) {
+    if (!tracking) return;
+    var body = JSON.stringify(Object.assign({ type: type, page: page, sid: sid, vid: vid, src: GG.campaign().src, referrer: refHost, device: device }, extra));
+    try { if (navigator.sendBeacon && navigator.sendBeacon("api/site?do=track", new Blob([body], { type: "application/json" }))) return; } catch (e) {}
+    fetch("api/site?do=track", { method: "POST", headers: { "Content-Type": "application/json" }, body: body, keepalive: true }).catch(function () {});
+  };
+  GG.track("view");
+
+  // The popup: { ref, title, body, cta, promo: { code, percent_off } | null, ends_on }.
+  // opts.preview (admin): nothing is tracked or remembered and the button goes nowhere.
+  GG.popup = function (p, opts) {
+    var o = opts || {}, prev = document.querySelector(".gg-pop");
+    if (prev) prev.remove();
+    var wrap = document.createElement("div");
+    wrap.className = "gg-pop";
+    wrap.innerHTML = '<div class="gg-pop-card" role="dialog" aria-modal="true" aria-labelledby="ggPopTitle">' +
+      '<button class="gg-pop-x" type="button" aria-label="Close">×</button>' +
+      '<p class="eyebrow">Gutta Golf</p><h2 id="ggPopTitle"></h2><p class="gg-pop-body"></p>' +
+      '<p class="gg-pop-code" hidden></p><a class="btn"></a><p class="gg-pop-end" hidden></p></div>';
+    wrap.querySelector("h2").textContent = p.title;
+    wrap.querySelector(".gg-pop-body").textContent = p.body;
+    var link = wrap.querySelector("a.btn");
+    link.textContent = p.cta || "Book a bay";
+    link.href = "book.html?src=" + encodeURIComponent(p.ref) + (p.promo ? "&promo=" + encodeURIComponent(p.promo.code) : "");
+    if (p.promo) {
+      var code = wrap.querySelector(".gg-pop-code");
+      code.hidden = false; code.textContent = "Code ";
+      var b = document.createElement("b"); b.textContent = p.promo.code; code.appendChild(b);
+      code.appendChild(document.createTextNode(" · " + p.promo.percent_off + "% off, applied when you book"));
+    }
+    if (p.ends_on) {
+      var d = GG.parseDay(p.ends_on), end = wrap.querySelector(".gg-pop-end");
+      end.hidden = false; end.textContent = "Ends " + (d ? d.toLocaleDateString("en-CA", { month: "short", day: "numeric" }) : p.ends_on);
+    }
+    function close(how) {
+      wrap.remove(); document.removeEventListener("keydown", onKey);
+      if (o.preview) return;
+      store(true, "gg.popup." + p.ref, "1");
+      GG.track(how === "click" ? "popup_click" : "popup_close", { src: p.ref });
+    }
+    function onKey(e) { if (e.key === "Escape") close(); }
+    wrap.querySelector(".gg-pop-x").addEventListener("click", function () { close(); });
+    wrap.addEventListener("click", function (e) { if (e.target === wrap) close(); });
+    link.addEventListener("click", function (e) { if (o.preview) { e.preventDefault(); close(); return; } close("click"); });
+    document.addEventListener("keydown", onKey);
+    document.body.appendChild(wrap);
+    link.focus({ preventScroll: true });
+    if (!o.preview) GG.track("popup_view", { src: p.ref });
+  };
+
+  // Each popup shows once per visitor, and not to someone already holding its code.
+  if (tracking) {
+    fetch("api/site?do=popup&page=" + encodeURIComponent(page)).then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+      var p = j && j.popup;
+      if (!p || store(true, "gg.popup." + p.ref) || (p.promo && GG.campaign().promo === p.promo.code)) return;
+      setTimeout(function () { GG.popup(p); }, page === "book" ? 800 : 2500);
+    }).catch(function () {});
+  }
 })();

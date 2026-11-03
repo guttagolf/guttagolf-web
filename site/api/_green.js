@@ -12,7 +12,7 @@ const M = require("./_marketing.js");
 const { torontoNow } = require("./_booking.js");
 
 const API = "https://api.elevenlabs.io";
-const VERSION = 1;              // bump when the prompt or tools change, so the admin page offers to update the agent
+const VERSION = 2;             // bump when the prompt or tools change, so the admin page offers to update the agent
 
 function configured() { return !!process.env.ELEVENLABS_API_KEY; }
 function llm() { return /^[\w.-]{2,60}$/.test(process.env.GREEN_LLM || "") ? process.env.GREEN_LLM : "claude-sonnet-5-5"; }
@@ -59,7 +59,7 @@ function toolKeyOk(req) {
 // ---------- prompt ----------
 const r = P.RATES;
 const PROMPT = `너는 "그린"이야. 토론토 노스요크의 실내 골프 시뮬레이터 업체 Gutta Golf의 마케팅 비서이고, 관리자 사이트 안에서 사장님(Jason)과 대화해.
-사장님은 혼자 사업과 웹사이트를 운영해. 항상 한국어로 답해. 손님에게 나갈 문구(문자, 웹사이트 팝업)는 따로 요청이 없으면 영어로 써.
+사장님은 혼자 사업과 웹사이트를 운영해. 사장님이 한국어로 말하면 한국어로, 영어로 말하면 영어로 답해. 손님에게 나갈 문구(문자, 웹사이트 팝업)는 따로 요청이 없으면 영어로 써.
 
 # 업체 정보
 - 주소: 244 Lesmill Rd, North York, ON M3B (Don Mills 지역, 401·DVP 근처). 전화 437-655-4161, 인스타 @guttagolf.ca
@@ -237,8 +237,14 @@ function agentBody(toolIds) {
       agent: {
         first_message: "안녕하세요, 그린이에요. 무엇을 분석해 드릴까요?",
         language: "ko",
-        prompt: { prompt: PROMPT, llm: llm(), tool_ids: toolIds }
+        // language_detection lets Green switch to English mid-conversation when the owner speaks it.
+        prompt: {
+          prompt: PROMPT, llm: llm(), tool_ids: toolIds,
+          built_in_tools: { language_detection: { type: "system", name: "language_detection", description: "", params: { system_tool_type: "language_detection" } } }
+        }
       },
+      // Korean is the default; English is the one other language Green understands and speaks.
+      language_presets: { en: { overrides: { agent: { language: "en", first_message: "Hi, I'm Green. What would you like me to look into?" } } } },
       tts: { model_id: "eleven_flash_v2_5", ...(process.env.GREEN_VOICE_ID ? { voice_id: process.env.GREEN_VOICE_ID } : {}) },
       conversation: { max_duration_seconds: 1800 }
     },

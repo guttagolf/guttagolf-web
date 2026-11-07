@@ -83,6 +83,16 @@ async function addWithCode(b) {
   throw new Error("Could not make a unique booking code.");
 }
 
+// Business facts and the notice the admin saved (app_settings "site"): { info: { phone, email, … }, notice }.
+async function siteSettings() {
+  const rows = await rest("app_settings?select=value&key=eq.site");
+  const v = rows.length ? rows[0].value : {};
+  return { info: v.info || {}, notice: v.notice || "" };
+}
+async function saveSiteSettings(value) {
+  await rest("app_settings?on_conflict=key", { method: "POST", prefer: "resolution=merge-duplicates,return=minimal", body: { key: "site", value, updated_at: new Date().toISOString() } });
+}
+
 // Writes one line to the logs table. Never throws: a failed log must not break the request it records.
 //   category: auth | booking | payment | door | system | error
 //   entry: { action, ok, actor, ref, detail, req }  (req gives the IP)
@@ -98,4 +108,4 @@ async function log(category, entry) {
   } catch (err) { console.error("Log write failed:", category, e.action, err.message); }
 }
 
-module.exports = { configured, rest, saveCustomer, takenOn, isFree, addBooking, addWithCode, log };
+module.exports = { configured, rest, saveCustomer, takenOn, isFree, addBooking, addWithCode, siteSettings, saveSiteSettings, log };

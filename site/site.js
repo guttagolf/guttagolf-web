@@ -1,12 +1,12 @@
 /* Gutta Golf — shared script for every page.
-   0. Saved settings. admin.html edits them; in the test version they live in this browser only (bookings are in Supabase).
-   1. Business facts (defaults here; admin.html can override them).
+   0. Browser storage helpers.
+   1. Business facts (defaults here; admin.html saves changes and the notice on the server, api/site?do=settings).
    2. Header and footer, drawn into #gg-header and #gg-footer.
    3. Bay availability from the database (sample bookings only in a local preview). */
 (function () {
   var GG = window.GG = {};
 
-  // 0. Saved settings
+  // 0. Browser storage
   GG.load = function (key, fallback) {
     try { var v = JSON.parse(localStorage.getItem(key)); return v == null ? fallback : v; } catch (e) { return fallback; }
   };
@@ -27,13 +27,18 @@
     rates: JSON.parse(JSON.stringify(window.GGP.RATES)),   // seasonal rates, see pricing.js
     notice: ""                      // one-line banner under the header, e.g. a holiday closing
   };
-  var saved = GG.load("gg.settings", {});
-  GG.info = Object.assign({}, GG.defaults.info, saved.info);
-  // Settings saved before the current rate shape (seasons with their own late-night rate) are dropped.
-  GG.rates = Object.assign({}, GG.defaults.rates, saved.rates && saved.rates.summer && saved.rates.summer.late != null ? saved.rates : {});
-  GG.notice = saved.notice || "";
-  GG.info.maps = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(GG.info.address1 + " " + GG.info.address2);
-  GG.info.mailto = "mailto:" + GG.info.email;
+  // Rates always come from pricing.js, the same numbers the payment API charges.
+  GG.rates = JSON.parse(JSON.stringify(window.GGP.RATES));
+  GG.notice = "";
+  GG.setInfo = function (info) {
+    GG.info = Object.assign({}, GG.defaults.info, info);
+    GG.info.maps = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(GG.info.address1 + " " + GG.info.address2);
+    GG.info.mailto = "mailto:" + GG.info.email;
+  };
+  GG.setInfo({});
+  // The real domain shows no preview banner; any other address (vercel.app, localhost) does.
+  GG.live = /(^|\.)guttagolf\.ca$/.test(location.hostname);
+  try { localStorage.removeItem("gg.settings"); } catch (e) {}   // settings from the old browser-only admin
 
   // 2. Header and footer
   var NAV = [
@@ -45,12 +50,11 @@
     ["about", "about.html", "About & contact"]
   ];
   var page = document.body.getAttribute("data-page");
-  var i = GG.info;
 
   var header = document.getElementById("gg-header");
   if (header) {
     header.outerHTML =
-      '<div class="testbar">Test version. This is not the live site, and bookings here are not real.</div>' +
+      (GG.live ? "" : '<div class="testbar">Preview of the new Gutta Golf website.</div>') +
       '<header class="site"><div class="wrap">' +
         '<a class="logo" href="./"><span class="dot" aria-hidden="true"></span>Gutta Golf</a>' +
         '<button class="menu-btn" type="button" aria-expanded="false" aria-controls="mainnav">Menu</button>' +
@@ -61,11 +65,6 @@
         "</nav>" +
         '<a class="btn" href="book.html">Book a bay</a>' +
       "</div></header>";
-    if (GG.notice) {
-      var note = document.createElement("div");
-      note.className = "notice"; note.textContent = GG.notice;
-      document.querySelector("header.site").before(note);
-    }
     var btn = document.querySelector(".menu-btn"), nav = document.getElementById("mainnav");
     btn.addEventListener("click", function () {
       var open = nav.classList.toggle("open");
@@ -81,8 +80,8 @@
         '<div class="cols">' +
           "<div>" +
             '<a class="logo" href="./"><span class="dot" aria-hidden="true"></span>Gutta Golf</a>' +
-            "<p>" + i.address1 + "<br>" + i.address2 + "</p>" +
-            "<p>" + i.hours + "</p>" +
+            '<p><span data-gg="address1"></span><br><span data-gg="address2"></span></p>' +
+            '<p data-gg="hours"></p>' +
           "</div>" +
           "<div><h3>Golf</h3>" +
             '<a href="book.html">Book a bay</a><a href="rates.html">Rates</a><a href="lessons.html">Lessons</a><a href="how-it-works.html">How it works</a>' +
@@ -91,23 +90,39 @@
             '<a href="faq.html">FAQ</a><a href="about.html">About us</a><a href="about.html#contact">Contact</a><a href="privacy.html">Privacy &amp; booking terms</a>' +
           "</div>" +
           "<div><h3>Contact</h3>" +
-            '<span class="mono">' + i.phone + "</span>" +
-            "<span>" + i.email + "</span>" +
-            '<a href="' + i.instagram + '" target="_blank" rel="noopener">Instagram @guttagolf.ca</a>' +
+            '<span class="mono" data-gg="phone"></span>' +
+            '<span data-gg="email"></span>' +
+            '<a data-gg-href="instagram" target="_blank" rel="noopener">Instagram @guttagolf.ca</a>' +
           "</div>" +
         "</div>" +
-        '<div class="base"><span>© ' + new Date().getFullYear() + " Gutta Golf</span><span>Test version</span></div>" +
+        '<div class="base"><span>© ' + new Date().getFullYear() + " Gutta Golf</span>" + (GG.live ? "" : "<span>Preview</span>") + "</div>" +
       "</div></footer>";
   }
 
-  // Saved facts into the page: <span data-gg="phone">, <a data-gg-href="maps">, <button data-gg-copy="phone">
-  document.querySelectorAll("[data-gg]").forEach(function (el) {
-    var k = el.getAttribute("data-gg");
-    var v = i[k];
-    if (v != null) el.textContent = v;
-  });
-  document.querySelectorAll("[data-gg-href]").forEach(function (a) { a.href = i[a.getAttribute("data-gg-href")]; });
-  document.querySelectorAll("[data-gg-copy]").forEach(function (b) { b.setAttribute("data-copy", i[b.getAttribute("data-gg-copy")]); });
+  // Facts into the page: <span data-gg="phone">, <a data-gg-href="maps">, <button data-gg-copy="phone">. Run again when the server's settings arrive.
+  GG.fillInfo = function () {
+    var i = GG.info;
+    document.querySelectorAll("[data-gg]").forEach(function (el) {
+      var v = i[el.getAttribute("data-gg")];
+      if (v != null) el.textContent = v;
+    });
+    document.querySelectorAll("[data-gg-href]").forEach(function (a) { a.href = i[a.getAttribute("data-gg-href")]; });
+    document.querySelectorAll("[data-gg-copy]").forEach(function (b) { b.setAttribute("data-copy", i[b.getAttribute("data-gg-copy")]); });
+  };
+  // The one-line notice above the header (e.g. a holiday closing). Empty removes it.
+  GG.showNotice = function (text) {
+    GG.notice = text || "";
+    var note = document.querySelector(".notice"), head = document.querySelector("header.site");
+    if (!GG.notice) { if (note) note.remove(); return; }
+    if (!note && head) { note = document.createElement("div"); note.className = "notice"; head.before(note); }
+    if (note) note.textContent = GG.notice;
+  };
+  GG.fillInfo();
+  // What the admin saved: { info, notice }. The page shows the defaults above until it arrives.
+  GG.settingsReady = fetch("api/site?do=settings").then(function (r) { return r.ok ? r.json() : null; }).then(function (j) {
+    if (!j) return;
+    GG.setInfo(j.info || {}); GG.fillInfo(); GG.showNotice(j.notice);
+  }).catch(function () {});
 
   // Copy buttons: <button class="copy" data-copy="text" data-target="id">
   document.querySelectorAll("[data-copy]").forEach(function (b) {

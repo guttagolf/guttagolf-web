@@ -7,6 +7,7 @@
 //   POST   /api/admin  { date, bay, start, len, name, phone, pay, postal?, age?, gender?, smsOk? }  →  phone / walk-in booking, priced by pricing.js (pay: card | cash | other, or none for pay later)
 //   PATCH  /api/admin?code=GG-XXXXX  { pay }               →  marks a pay-at-Gutta booking paid (card | cash | other), or unpaid again (null)
 //   DELETE /api/admin?code=GG-XXXXX                         →  cancels the booking (kept in the table as canceled)
+//   PUT    /api/admin?view=settings  { info, notice }        →  saves the business facts and notice every page shows (read back by api/site?do=settings)
 const P = require("../pricing.js");
 const db = require("./_db.js");
 const auth = require("./_auth.js");
@@ -124,6 +125,21 @@ async function setPaid(code, pay, actor, req) {
   return { status: 200 };
 }
 
+// Checks what the settings form sent. Returns { value } or { error }.
+const INFO_KEYS = ["phone", "email", "instagram", "address1", "address2", "hours"];
+function checkSettings(body) {
+  const b = body || {}, src = b.info || {}, info = {};
+  for (const k of INFO_KEYS) {
+    const v = String(src[k] || "").trim().slice(0, 120);
+    if (!v && k !== "instagram") return { error: "비어 있는 칸이 있습니다." };
+    info[k] = v;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(info.email)) return { error: "이메일 주소를 확인하세요." };
+  if (info.phone.replace(/\D/g, "").length < 7) return { error: "전화번호를 확인하세요." };
+  if (info.instagram && !/^https:\/\/\S+$/.test(info.instagram)) return { error: "인스타그램 주소는 https://로 시작해야 합니다." };
+  return { value: { info, notice: String(b.notice || "").trim().slice(0, 160) } };
+}
+
 module.exports = async (req, res) => {
   const actor = auth.requireAdmin(req, res);
   if (!actor) return;
@@ -167,7 +183,14 @@ module.exports = async (req, res) => {
         detail: { date: b.date, bay: b.bay, time: `${P.slotLabel(b.start_slot)} – ${P.slotLabel(b.start_slot + b.len)}`, total: b.total_cents / 100, source: b.source, pay: b.pay_method } });
       return res.status(200).json({ ok: true });
     }
-    res.setHeader("Allow", "GET, POST, PATCH, DELETE");
+    if (req.method === "PUT" && q.view === "settings") {
+      const c = checkSettings(req.body);
+      if (c.error) return res.status(400).json({ error: c.error });
+      await db.saveSiteSettings(c.value);
+      await db.log("system", { action: "settings_save", actor, req, detail: c.value });
+      return res.status(200).json(c.value);
+    }
+    res.setHeader("Allow", "GET, POST, PATCH, PUT, DELETE");
     return res.status(405).json({ error: "Method not allowed." });
   } catch (err) {
     console.error("Admin API failed:", err.message);

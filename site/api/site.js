@@ -2,6 +2,7 @@
 //   POST /api/site?do=track  { type, page, sid, vid, src, referrer, device }  →  204   (one website event, no personal data)
 //   GET  /api/site?do=popup&page=home                                        →  { popup } the popup to show, or null
 //   GET  /api/site?do=promo&code=AM20                                        →  { code, percent_off } or 404
+//   GET  /api/site?do=settings                                               →  { info, notice } the admin saved (api/admin?view=settings)
 //   POST /api/site?do=sms-in   ←  Twilio (form fields From, Body). STOP / START replies turn marketing texts off / on.
 //        Set once in Twilio: Phone Numbers → your number → Messaging → "A message comes in" → https://<site>/api/site?do=sms-in (HTTP POST).
 const db = require("./_db.js");
@@ -39,6 +40,11 @@ module.exports = async (req, res) => {
       let popup = null;
       try { if (M.PAGES.includes(q.page)) popup = await M.livePopup(q.page); } catch (err) { console.error("Popup lookup failed:", err.message); }
       return res.status(200).json({ popup });
+    }
+
+    if (req.method === "GET" && q.do === "settings") {
+      res.setHeader("Cache-Control", "public, s-maxage=30, max-age=0");
+      return res.status(200).json(await db.siteSettings());
     }
 
     if (req.method === "GET" && q.do === "promo") {

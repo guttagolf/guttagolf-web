@@ -1,5 +1,5 @@
 /* Admin page: sign-in, dashboard, bookings, payments, customers, door and bay power, logs, site settings.
-   Data comes from api/login, api/admin and api/devices (session cookie). Site settings still live in this browser (GG.save). */
+   Data comes from api/login, api/admin and api/devices (session cookie). Site settings are saved on the server (api/admin?view=settings). */
 (function () {
   var GG = window.GG, P = window.GGP;
   var $ = function (id) { return document.getElementById(id); };
@@ -78,7 +78,7 @@
     paid_venue: "현장 결제 받음", paid_venue_undo: "현장 결제 되돌림",
     checkout_start: "결제 페이지 열림", paid: "온라인 결제 완료", paid_conflict: "결제됐지만 시간 겹침",
     door_open: "문 열기", power_on: "전원 켜기", power_off: "전원 끄기",
-    admin_api: "관리자 API 오류", booking_save: "예약 저장 실패", checkout: "결제 페이지 오류",
+    settings_save: "사이트 설정 저장", admin_api: "관리자 API 오류", booking_save: "예약 저장 실패", checkout: "결제 페이지 오류",
     green_draft: "그린 초안 작성", campaign_delete: "캠페인 초안 삭제", sms_test: "테스트 문자", sms_send: "문자 발송",
     popup_publish: "팝업 게시", campaign_end: "캠페인 종료", sms_opt_out: "문자 수신 거부", sms_opt_in: "문자 수신 재동의", green_api: "그린 API 오류"
   };
@@ -472,48 +472,50 @@
   });
   $("lJson").addEventListener("click", function () { download(logFile("json"), JSON.stringify(logRows, null, 2), "application/json"); });
 
-  // ---------- site settings (this browser) ----------
-  function saveSettings() { return GG.save("gg.settings", { info: GG.info, rates: GG.rates, notice: GG.notice }); }
+  // ---------- site settings (saved on the server, shown on every page) ----------
   var INFO = { iPhone: "phone", iEmail: "email", iInstagram: "instagram", iAddress1: "address1", iAddress2: "address2", iHours: "hours" };
   function fillForms() {
-    ["winter", "summer"].forEach(function (s) {
-      var S = s[0].toUpperCase() + s.slice(1);
-      $("r" + S + "Day").value = GG.rates[s].day; $("r" + S + "Eve").value = GG.rates[s].eve; $("r" + S + "Weekend").value = GG.rates[s].weekend; $("r" + S + "Late").value = GG.rates[s].late;
-    });
-    $("rEveFrom").value = GG.rates.eveFrom;
     Object.keys(INFO).forEach(function (id) { $(id).value = GG.info[INFO[id]] || ""; });
     $("nText").value = GG.notice;
   }
-  $("ratesForm").addEventListener("submit", function (e) {
-    e.preventDefault();
-    var season = function (S) { return { day: +$("r" + S + "Day").value, eve: +$("r" + S + "Eve").value, weekend: +$("r" + S + "Weekend").value, late: +$("r" + S + "Late").value }; };
-    GG.rates = { winter: season("Winter"), summer: season("Summer"), eveFrom: +$("rEveFrom").value };
-    var ok = saveSettings();
-    say("ratesMsg", ok ? "저장했습니다. 이 브라우저의 사이트 화면에만 반영됩니다." : "저장하지 못했습니다.", ok);
-  });
-  $("infoForm").addEventListener("submit", function (e) {
-    e.preventDefault();
+  // Rates are read-only here: they come from pricing.js, which is also what Stripe charges.
+  function fillRates() {
+    var tb = $("rList"); tb.innerHTML = "";
+    ["winter", "summer"].forEach(function (s) {
+      var r = GG.rates[s];
+      [["평일 낮", r.day], ["평일 저녁 (" + GG.hourLabel(GG.rates.eveFrom) + "–)", r.eve], ["주말·공휴일", r.weekend], ["심야 (12 – 6 AM)", r.late]].forEach(function (row, n) {
+        var tr = tb.insertRow();
+        tr.insertCell().textContent = n ? "" : (s === "winter" ? "겨울 11/1–4/30" : "여름 5/1–10/31");
+        tr.insertCell().textContent = row[0];
+        tr.insertCell().textContent = "$" + row[1];
+      });
+    });
+  }
+  function saveSettings(info, notice, msgId, okText) {
+    return api("api/admin?view=settings", { method: "PUT", body: { info: info, notice: notice } }).then(function (j) {
+      GG.setInfo(j.info); GG.notice = j.notice; fillForms();
+      say(msgId, okText(j), true);
+    }).catch(function (err) { say(msgId, err.message, false); });
+  }
+  function formInfo() {
     var info = {};
     Object.keys(INFO).forEach(function (id) { info[INFO[id]] = $(id).value.trim(); });
-    GG.info = info;
-    var ok = saveSettings();
-    say("infoMsg", ok ? "저장했습니다." : "저장하지 못했습니다.", ok);
+    return info;
+  }
+  $("infoForm").addEventListener("submit", function (e) {
+    e.preventDefault();
+    saveSettings(formInfo(), GG.notice, "infoMsg", function () { return "저장했습니다. 1분 안에 모든 페이지에 보입니다."; });
   });
   $("noticeForm").addEventListener("submit", function (e) {
     e.preventDefault();
-    GG.notice = $("nText").value.trim();
-    var ok = saveSettings();
-    say("noticeMsg", ok ? (GG.notice ? "공지를 저장했습니다." : "공지를 지웠습니다.") : "저장하지 못했습니다.", ok);
+    saveSettings(GG.info, $("nText").value.trim(), "noticeMsg", function (j) { return j.notice ? "공지를 올렸습니다. 1분 안에 모든 페이지에 보입니다." : "공지를 내렸습니다."; });
   });
   $("resetSettings").addEventListener("click", function () {
-    if (!confirm("요금·영업 정보·공지를 처음 값으로 되돌릴까요?")) return;
-    GG.info = Object.assign({}, GG.defaults.info);
-    GG.rates = JSON.parse(JSON.stringify(GG.defaults.rates));
-    GG.notice = "";
-    saveSettings(); fillForms();
-    say("dataMsg", "기본값으로 되돌렸습니다.", true);
+    if (!confirm("영업 정보를 처음 값으로 되돌리고 공지를 내릴까요?")) return;
+    saveSettings(GG.defaults.info, "", "dataMsg", function () { return "기본값으로 되돌렸습니다."; });
   });
-  fillForms();
+  fillRates(); fillForms();
+  GG.settingsReady.then(fillForms);
 
   // Shared with admin-green.js (the Green tab).
   window.GGA = { api: api, loaders: loaders, el: el, say: say, stamp: stamp, pill: pill, download: download, empty: empty, dayLabel: dayLabel };

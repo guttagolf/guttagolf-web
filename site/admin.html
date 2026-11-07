@@ -455,29 +455,13 @@
     <section id="settings" data-tab>
       <div class="wrap">
         <h2>사이트 설정</h2>
-        <p class="hint">테스트 버전에서는 아래 설정이 이 브라우저에만 저장됩니다. 실제 결제 금액은 서버의 pricing.js 요금으로 계산됩니다.</p>
+        <p class="hint">영업 정보와 공지는 서버에 저장되어 모든 손님 화면에 보입니다.</p>
         <div class="cols2" style="margin-top: 0; align-items: start">
-          <form class="card" id="ratesForm">
+          <div class="card">
             <h3>요금</h3>
-            <p class="hint">베이 1개, 1시간 기준 (HST 별도).</p>
-            <b>겨울 (11월 1일 – 4월 30일)</b>
-            <div class="grid2">
-              <label class="field">평일 낮 $<input id="rWinterDay" type="number" min="0" step="1" required></label>
-              <label class="field">평일 저녁 $<input id="rWinterEve" type="number" min="0" step="1" required></label>
-              <label class="field">주말·공휴일 $<input id="rWinterWeekend" type="number" min="0" step="1" required></label>
-              <label class="field">심야 (12 – 6 AM) $<input id="rWinterLate" type="number" min="0" step="1" required></label>
-            </div>
-            <b>여름 (5월 1일 – 10월 31일)</b>
-            <div class="grid2">
-              <label class="field">평일 낮 $<input id="rSummerDay" type="number" min="0" step="1" required></label>
-              <label class="field">평일 저녁 $<input id="rSummerEve" type="number" min="0" step="1" required></label>
-              <label class="field">주말·공휴일 $<input id="rSummerWeekend" type="number" min="0" step="1" required></label>
-              <label class="field">심야 (12 – 6 AM) $<input id="rSummerLate" type="number" min="0" step="1" required></label>
-            </div>
-            <label class="field">저녁 요금 시작 (시, 24시간제)<input id="rEveFrom" type="number" min="10" max="23" step="1" required></label>
-            <button class="btn" type="submit">요금 저장</button>
-            <p class="msg" id="ratesMsg" role="status"></p>
-          </form>
+            <p class="hint">베이 1개, 1시간 기준 (HST 별도). 사이트에 보이는 요금과 실제 결제 금액이 같도록 pricing.js 한 곳에서만 정합니다. 바꾸려면 Claude에게 요청하세요.</p>
+            <div class="table-wrap"><table class="list" style="min-width: 0"><tbody id="rList"></tbody></table></div>
+          </div>
           <div>
             <form class="card" id="infoForm" style="margin-bottom: 20px">
               <h3>영업 정보</h3>
@@ -500,7 +484,7 @@
             </form>
             <div class="card">
               <h3>기본값</h3>
-              <button class="btn ghost" type="button" id="resetSettings">요금·정보·공지 기본값으로</button>
+              <button class="btn ghost" type="button" id="resetSettings">영업 정보 기본값으로, 공지 내리기</button>
               <p class="msg" id="dataMsg" role="status"></p>
             </div>
           </div>

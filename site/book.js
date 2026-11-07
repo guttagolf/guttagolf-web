@@ -298,7 +298,8 @@
   $("cName").addEventListener("input", updateGo);
   $("cPhone").addEventListener("input", updateGo);
 
-  $("waitCall").href = "tel:" + GG.info.phone.replace(/[^\d+]/g, "");
+  function callLink() { $("waitCall").href = "tel:" + GG.info.phone.replace(/[^\d+]/g, ""); }
+  callLink(); GG.settingsReady.then(callLink);
 
   function payMsg(text) { var m = $("payMsg"); m.textContent = text || ""; m.hidden = !text; }
 

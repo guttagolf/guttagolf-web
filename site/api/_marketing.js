@@ -540,5 +540,5 @@ async function readPage(address) {
 module.exports = {
   range, bookingStats, customerAnalysis, siteAnalytics, audiencePreview, createSmsDraft, createPopupDraft, campaignResults,
   getCampaign, updateDraft, deleteDraft, publishPopup, endCampaign, livePopup, segments, smsText, sendTest, sendCampaign,
-  smsReply, twilioSignatureOk, twilioConfigured, saveReport, readPage, quietHours, PAGES, BOOKING_GROUPS, CUSTOMER_DIMS, SITE_GROUPS, AUDIENCE_KEYS
+  smsReply, twilioSignatureOk, twilioConfigured, twilioSend, e164, saveReport, readPage, quietHours, PAGES, BOOKING_GROUPS, CUSTOMER_DIMS, SITE_GROUPS, AUDIENCE_KEYS
 };

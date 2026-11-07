@@ -28,12 +28,12 @@ function shape(b) {
 }
 
 async function bookingsOn(date) {
-  const rows = await db.rest(`bookings?select=${BOOKING_COLS}&date=eq.${date}&status=neq.canceled&order=start_slot,bay`);
+  const rows = await db.rest(`bookings?select=${BOOKING_COLS}&date=eq.${date}&status=in.(confirmed,conflict)&order=start_slot,bay`);
   return rows.map(shape);
 }
 
 async function payments(from, to) {
-  const rows = await db.rest(`bookings?select=${BOOKING_COLS}&date=gte.${from}&date=lte.${to}&order=date.desc,start_slot.desc&limit=2000`);
+  const rows = await db.rest(`bookings?select=${BOOKING_COLS}&date=gte.${from}&date=lte.${to}&status=neq.pending&order=date.desc,start_slot.desc&limit=2000`);
   return rows.map(shape);
 }
 
@@ -50,7 +50,7 @@ async function customers(q) {
   }
   const rows = await db.rest(`customers?select=*,bookings(date,total_cents,status,paid_at)${filter}&order=updated_at.desc&limit=300`);
   return rows.map((c) => {
-    const live = (c.bookings || []).filter((b) => b.status !== "canceled");
+    const live = (c.bookings || []).filter((b) => b.status === "confirmed" || b.status === "conflict");   // not canceled or an unpaid payment hold
     return {
       name: c.name, phone: c.phone, email: c.email, created: c.created_at,
       postal: c.postal_code || null, age: c.age_band || null, gender: c.gender || null, smsOk: !!c.sms_opt_in,

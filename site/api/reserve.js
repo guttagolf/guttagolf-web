@@ -4,6 +4,7 @@
 const { checkBooking, torontoNow } = require("./_booking.js");
 const db = require("./_db.js");
 const promo = require("./_promo.js");
+const notify = require("./_notify.js");
 
 const PER_PHONE = 2;   // upcoming unpaid bookings one phone number can hold
 const PER_IP = 3;      // pay-at-Gutta bookings one IP can make in 24 hours
@@ -36,6 +37,8 @@ module.exports = async (req, res) => {
     await db.log("booking", { action: "booking_venue", actor: "customer", ref: row.code, req,
       detail: { date: booking.date, bay: booking.bay, start: booking.start, len: booking.len, name: booking.name, phone: booking.phone, total: amounts.total / 100,
         promo: booking.promo || undefined, src: pr.ref || undefined } });
+    // Awaited: a serverless function may be stopped once it has answered.
+    await notify.bookingConfirmed({ code: row.code, date: booking.date, bay: booking.bay, start: booking.start, len: booking.len, phone: booking.phone, total: amounts.total / 100 }, false);
     return res.status(200).json({ code: row.code, date: booking.date, bay: booking.bay, start: booking.start, len: booking.len, name: booking.name, total: amounts.total / 100 });
   } catch (err) {
     if (err.code === "23P01") return res.status(409).json({ error: "Someone just booked that time. Pick another time or bay.", code: "taken" });

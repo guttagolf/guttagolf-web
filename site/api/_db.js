@@ -41,10 +41,21 @@ async function saveCustomer({ name, phone, email, postal, age, gender, smsOk }) 
   return rows[0].id;
 }
 
-// Confirmed bookings on a day: [{ bay, start, len }] (no customer details).
+// Confirmed bookings and live payment holds on a day: [{ bay, start, len }] (no customer details).
 async function takenOn(date) {
-  const rows = await rest(`bookings?select=bay,start_slot,len&status=eq.confirmed&date=eq.${encodeURIComponent(date)}`);
-  return rows.map((b) => ({ bay: b.bay, start: b.start_slot, len: b.len }));
+  const rows = await rest(`bookings?select=bay,start_slot,len,status,hold_until&status=in.(confirmed,pending)&date=eq.${encodeURIComponent(date)}`)
+    .catch((err) => {
+      if (err.code !== "42703") throw err;                            // hold_until not added yet (schema.sql not run again)
+      return rest(`bookings?select=bay,start_slot,len,status&status=eq.confirmed&date=eq.${encodeURIComponent(date)}`);
+    });
+  const now = Date.now();
+  return rows.filter((b) => b.status === "confirmed" || Date.parse(b.hold_until) > now).map((b) => ({ bay: b.bay, start: b.start_slot, len: b.len }));
+}
+
+// Deletes payment holds whose Stripe page has expired, so their bays can be booked again. Never throws.
+async function purgeHolds() {
+  try { await rest(`bookings?status=eq.pending&hold_until=lt.${encodeURIComponent(new Date().toISOString())}`, { method: "DELETE", prefer: "return=minimal" }); }
+  catch (err) { if (err.code !== "42703" && err.code !== "22P02") console.error("Purging payment holds failed:", err.message); }
 }
 
 async function isFree(date, bay, start, len) {
@@ -52,9 +63,11 @@ async function isFree(date, bay, start, len) {
 }
 
 // Inserts a booking. booking: { code, date, bay, start, len, name, phone, email, postal, age, gender, smsOk, amounts, source,
-//   stripeSessionId, status, payMethod, promo, ref }   (amounts.discount is what a promo code took off the subtotal)
+//   stripeSessionId, status, holdUntil, payMethod, promo, ref }   (amounts.discount is what a promo code took off the subtotal)
 // payMethod (stripe, card, cash, other) means it is paid now; without it the booking is paid at Gutta later.
+// status 'pending' with holdUntil is a payment hold (api/checkout). Expired holds are cleared first so they never block a booking.
 async function addBooking(b) {
+  await purgeHolds();
   const customer_id = await saveCustomer(b);
   const rows = await rest("bookings", {
     method: "POST",
@@ -64,6 +77,7 @@ async function addBooking(b) {
       source: b.source, status: b.status || "confirmed", stripe_session_id: b.stripeSessionId || null,
       stripe_payment_intent: b.stripePaymentIntent || null,
       pay_method: b.payMethod || null, paid_at: b.payMethod ? new Date().toISOString() : null,
+      ...(b.holdUntil ? { hold_until: b.holdUntil } : {}),
       // Only sent when set, so bookings keep working on a database that has not had the marketing columns added yet.
       ...(b.promo ? { promo_code: b.promo, discount_cents: b.amounts.discount || 0 } : {}),
       ...(b.ref ? { campaign_ref: b.ref } : {})
@@ -108,4 +122,4 @@ async function log(category, entry) {
   } catch (err) { console.error("Log write failed:", category, e.action, err.message); }
 }
 
-module.exports = { configured, rest, saveCustomer, takenOn, isFree, addBooking, addWithCode, siteSettings, saveSiteSettings, log };
+module.exports = { configured, rest, saveCustomer, takenOn, purgeHolds, isFree, addBooking, addWithCode, siteSettings, saveSiteSettings, log };

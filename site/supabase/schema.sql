@@ -167,3 +167,16 @@ alter table public.sms_sends     enable row level security;
 alter table public.events        enable row level security;
 alter table public.app_settings  enable row level security;
 alter table public.green_reports enable row level security;
+
+-- ============================================================================
+-- Holding the bay while the customer pays online (api/checkout). Safe to run again.
+-- ============================================================================
+-- A 'pending' booking holds its bay until hold_until (a little after the Stripe page expires). Paid → confirmed;
+-- abandoned → deleted by the next booking request. Pending holds block the same overlaps as confirmed bookings.
+alter table public.bookings add column if not exists hold_until timestamptz;
+alter table public.bookings drop constraint if exists bookings_status_check;
+alter table public.bookings add constraint bookings_status_check check (status in ('confirmed', 'canceled', 'conflict', 'pending'));
+alter table public.bookings drop constraint if exists bookings_no_overlap;
+alter table public.bookings add constraint bookings_no_overlap exclude using gist (
+  date with =, bay with =, int4range(start_slot, start_slot + len) with &&
+) where (status in ('confirmed', 'pending'));

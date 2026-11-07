@@ -78,7 +78,7 @@
     paid_venue: "현장 결제 받음", paid_venue_undo: "현장 결제 되돌림",
     checkout_start: "결제 페이지 열림", paid: "온라인 결제 완료", paid_conflict: "결제됐지만 시간 겹침",
     door_open: "문 열기", power_on: "전원 켜기", power_off: "전원 끄기",
-    settings_save: "사이트 설정 저장", admin_api: "관리자 API 오류", booking_save: "예약 저장 실패", checkout: "결제 페이지 오류",
+    settings_save: "사이트 설정 저장", sms_confirm: "예약 확인 문자", admin_api: "관리자 API 오류", booking_save: "예약 저장 실패", checkout: "결제 페이지 오류",
     green_draft: "그린 초안 작성", campaign_delete: "캠페인 초안 삭제", sms_test: "테스트 문자", sms_send: "문자 발송",
     popup_publish: "팝업 게시", campaign_end: "캠페인 종료", sms_opt_out: "문자 수신 거부", sms_opt_in: "문자 수신 재동의", green_api: "그린 API 오류"
   };
@@ -259,7 +259,7 @@
   var payRows = [];
   $("pFrom").value = P.dayKey(new Date(GG.today.getFullYear(), GG.today.getMonth(), 1));
   $("pTo").value = P.dayKey(addDays(GG.today, P.DAYS_AHEAD));
-  var STATUS = { confirmed: ["확정", "ok"], conflict: ["시간 겹침", "bad"], canceled: ["취소", ""] };
+  var STATUS = { confirmed: ["확정", "ok"], conflict: ["시간 겹침", "bad"], canceled: ["취소", ""], pending: ["결제 중", ""] };
   function payFiltered() {
     var src = $("pSource").value, st = $("pStatus").value, pay = $("pPay").value;
     return payRows.filter(function (p) { return (!src || p.source === src) && (!st || p.status === st) && (!pay || payKind(p) === pay); });

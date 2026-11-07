@@ -367,6 +367,8 @@
     }).catch(function () { payMsg("We could not check your payment just now. Refresh this page in a moment."); });
   } else if (q.get("canceled")) {
     payMsg("Payment canceled. Nothing was charged and the time is not booked.");
+    // Free the bay we held while the payment page was open (it also frees itself after about 30 minutes).
+    if (q.get("hold")) fetch("api/checkout?release=" + encodeURIComponent(q.get("hold")), { method: "POST" }).then(refresh, function () {});
   }
   if (q.get("paid") || q.get("canceled")) history.replaceState(null, "", location.pathname);
 
